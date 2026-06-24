@@ -1,0 +1,151 @@
+/* ── Settings page ────────────────────────────────────────────── */
+.wcfsl-settings-wrap h2 {
+	margin: 24px 0 8px;
+}
+.wcfsl-settings-wrap .form-table th {
+	width: 200px;
+}
+.wcfsl-carriers-table {
+	margin-bottom: 12px;
+}
+.wcfsl-carriers-table th,
+.wcfsl-carriers-table td {
+	padding: 8px 12px;
+	vertical-align: middle;
+}
+.wcfsl-carriers-table tbody tr:hover td {
+	background: #f9f9f9;
+}
+.wcfsl-remove-carrier {
+	color: #b32d2e !important;
+}
+
+/* ── Documents meta box (order edit sidebar) ─────────────────── */
+.wcfsl-doc-buttons {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.wcfsl-doc-btn.button {
+	display: inline-flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	align-items: center !important;
+	justify-content: center;
+	gap: 5px;
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 12px !important;
+	height: auto !important;
+	line-height: 1.4 !important;
+	font-size: 13px !important;
+	white-space: nowrap;
+	text-align: center;
+}
+
+.wcfsl-doc-btn .dashicons {
+	display: inline-block !important;
+	flex-shrink: 0;
+	font-size: 15px !important;
+	width: 15px !important;
+	height: 15px !important;
+	line-height: 15px !important;
+	position: relative;
+	top: 0;
+	margin: 0;
+}
+
+.wcfsl-doc-unsaved {
+	color: #757575;
+	font-style: italic;
+	font-size: 12px;
+}
+
+/* ── Documents column (orders list) ──────────────────────────── */
+.column-wcfsl_documents {
+	width: 100px !important;
+}
+
+/* Constrain cell so links don't inherit table-cell stretching */
+td.wcfsl_documents {
+	vertical-align: middle;
+}
+
+.wcfsl-list-doc-links {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 5px;
+}
+
+.wcfsl-list-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	text-decoration: none;
+	padding: 3px 8px 3px 6px;
+	border-radius: 3px;
+	line-height: 1.3;
+	white-space: nowrap;
+}
+
+.wcfsl-list-link .dashicons {
+	flex-shrink: 0;
+	font-size: 12px;
+	width: 12px;
+	height: 12px;
+	line-height: 12px;
+	position: relative;
+	top: -1px;
+}
+
+.wcfsl-list-link--invoice {
+	background: #e7f0ff;
+	color: #2271b1;
+	border: 1px solid #c5d9f7;
+}
+.wcfsl-list-link--invoice:hover {
+	background: #d0e3ff;
+	color: #135e96;
+	border-color: #a8c7f5;
+}
+
+.wcfsl-list-link--slip {
+	background: #f0f0f0;
+	color: #3c434a;
+	border: 1px solid #dcdcde;
+}
+.wcfsl-list-link--slip:hover {
+	background: #e2e2e2;
+	color: #1d2327;
+}
+
+.wcfsl-list-link--waybill {
+	background: #fff3e0;
+	color: #7c4700;
+	border: 1px solid #f0c080;
+}
+.wcfsl-list-link--waybill:hover {
+	background: #ffe0b2;
+	color: #5c3300;
+	border-color: #e8a040;
+}
+
+/* Waybill button in Documents meta box */
+.wcfsl-doc-btn--waybill {
+	background: #fff3e0 !important;
+	border-color: #e8a040 !important;
+	color: #7c4700 !important;
+}
+.wcfsl-doc-btn--waybill:hover {
+	background: #ffe0b2 !important;
+	border-color: #c97c10 !important;
+	color: #5c3300 !important;
+}
+.wcfsl-doc-btn--waybill-disabled {
+	opacity: 0.5;
+	cursor: not-allowed !important;
+}
