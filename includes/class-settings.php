@@ -90,6 +90,8 @@ final class WCFSL_Settings {
 			],
 			// Shipping method IDs treated as in-house local delivery (no external tracking link).
 			'local_delivery_methods'  => [],
+			// URL encoded as a QR code printed below the waybill (e.g. your shop or returns page).
+			'waybill_scan_url'        => '',
 		];
 	}
 
@@ -158,6 +160,13 @@ final class WCFSL_Settings {
 					<tr>
 						<th><?php esc_html_e( 'Invoice Footer Note', 'wc-fulfillment-sl' ); ?></th>
 						<td><input type="text" name="wcfsl[invoice_footer]" value="<?php echo esc_attr( $s['invoice_footer'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Thank you for your business!', 'wc-fulfillment-sl' ); ?>"></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Waybill Scan URL', 'wc-fulfillment-sl' ); ?></th>
+						<td>
+							<input type="url" name="wcfsl[waybill_scan_url]" value="<?php echo esc_attr( $s['waybill_scan_url'] ); ?>" class="regular-text" placeholder="https://yourstore.com">
+							<p class="description"><?php esc_html_e( 'A QR code for this URL will be printed below every waybill. Leave blank to hide the QR code.', 'wc-fulfillment-sl' ); ?></p>
+						</td>
 					</tr>
 				</table>
 
@@ -228,7 +237,8 @@ final class WCFSL_Settings {
 		$data['company_phone']   = sanitize_text_field( $raw['company_phone'] ?? '' );
 		$data['company_email']   = sanitize_email( $raw['company_email'] ?? '' );
 		$data['company_logo_id'] = absint( $raw['company_logo_id'] ?? 0 );
-		$data['invoice_footer']  = sanitize_text_field( $raw['invoice_footer'] ?? '' );
+		$data['invoice_footer']    = sanitize_text_field( $raw['invoice_footer'] ?? '' );
+		$data['waybill_scan_url']  = esc_url_raw( $raw['waybill_scan_url'] ?? '' );
 
 		$data['carriers'] = [];
 		if ( ! empty( $raw['carriers'] ) && is_array( $raw['carriers'] ) ) {

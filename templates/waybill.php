@@ -43,10 +43,12 @@ body {
 /* ── Label card ───────────────────────────────────────── */
 .waybill {
 	width: 100mm;
+	height: 150mm;
 	background: #fff;
 	border: 1.5px solid #000;
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
 /* ── 1. Header: logo col | sender col ────────────────── */
@@ -54,7 +56,8 @@ body {
 	display: grid;
 	grid-template-columns: 27mm 1fr;
 	border-bottom: 1.5px solid #000;
-	min-height: 24mm;
+	height: 28mm;
+	flex-shrink: 0;
 }
 .wb-logo-col {
 	padding: 3mm 2.5mm;
@@ -138,6 +141,9 @@ body {
 	padding: 3mm 3mm 2mm;
 	border-bottom: 1px solid #000;
 	text-align: center;
+	height: 22mm;
+	flex-shrink: 0;
+	overflow: hidden;
 }
 #wb-barcode-canvas {
 	display: block;
@@ -167,6 +173,8 @@ body {
 .wb-to {
 	padding: 2.5mm 3mm;
 	border-bottom: 1px solid #000;
+	flex: 1;
+	overflow: hidden;
 }
 .wb-to-header {
 	font-size: 8px;
@@ -204,7 +212,8 @@ body {
 	display: grid;
 	grid-template-columns: 1fr 22mm;
 	border-bottom: 1px solid #000;
-	min-height: 18mm;
+	height: 20mm;
+	flex-shrink: 0;
 }
 .wb-product-left {
 	display: flex;
@@ -259,7 +268,8 @@ body {
 	display: grid;
 	grid-template-columns: 1fr 22mm;
 	border-bottom: 1px solid #000;
-	min-height: 14mm;
+	height: 18mm;
+	flex-shrink: 0;
 }
 .wb-meta-left {
 	padding: 2.5mm 3mm;
@@ -294,6 +304,49 @@ body {
 	color: #888;
 }
 
+/* ── 6. QR strip (inside waybill) ────────────────────── */
+.wb-qr-strip {
+	display: grid;
+	grid-template-columns: 16mm 1fr;
+	height: 18mm;
+	flex-shrink: 0;
+	border-top: 1px solid #000;
+}
+.wb-qr-box {
+	padding: 1.5mm;
+	border-right: 1px solid #ddd;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: #fff;
+}
+#wb-qr-code canvas,
+#wb-qr-code img {
+	display: block;
+	max-width: 100%;
+	max-height: 100%;
+}
+.wb-qr-text {
+	padding: 2.5mm 3mm;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 1mm;
+}
+.wb-qr-label {
+	font-size: 6px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	color: #aaa;
+}
+.wb-qr-url {
+	font-size: 7px;
+	color: #333;
+	word-break: break-all;
+	line-height: 1.4;
+}
+
 /* ── Print overrides ──────────────────────────────────── */
 @media print {
 	body    { background: white; padding: 0; }
@@ -304,7 +357,7 @@ body {
 		page-break-after: always;
 	}
 	@page {
-		size: 100mm auto;
+		size: 100mm 150mm;
 		margin: 0;
 	}
 }
@@ -449,8 +502,24 @@ if ( count( $item_names ) > 4 ) {
 		</div>
 	</div>
 
+	<?php if ( ! empty( $scan_url ) ) : ?>
+	<!-- 6. QR strip -->
+	<div class="wb-qr-strip">
+		<div class="wb-qr-box">
+			<div id="wb-qr-code"></div>
+		</div>
+		<div class="wb-qr-text">
+			<div class="wb-qr-label"><?php esc_html_e( 'Scan to visit', 'wc-fulfillment-sl' ); ?></div>
+			<div class="wb-qr-url"><?php echo esc_html( $scan_url ); ?></div>
+		</div>
+	</div>
+	<?php endif; ?>
+
 </div><!-- .waybill -->
 
+<?php if ( ! empty( $scan_url ) ) : ?>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<?php endif; ?>
 <script src="<?php echo esc_url( $barcode_js_url ); ?>"></script>
 <script>
 (function () {
@@ -474,13 +543,36 @@ if ( count( $item_names ) > 4 ) {
 	if ( document.readyState === 'loading' ) {
 		document.addEventListener( 'DOMContentLoaded', function () {
 			renderBarcodes();
+			renderQR();
 			window.print();
 		} );
 	} else {
 		renderBarcodes();
+		renderQR();
 		window.print();
 	}
 }());
+
+<?php if ( ! empty( $scan_url ) ) : ?>
+var wcfslScanUrl = <?php echo wp_json_encode( $scan_url ); ?>;
+function renderQR() {
+	var el = document.getElementById('wb-qr-code');
+	if ( ! el || ! wcfslScanUrl ) return;
+	if ( typeof QRCode !== 'undefined' ) {
+		new QRCode( el, {
+			text        : wcfslScanUrl,
+			width       : 80,
+			height      : 80,
+			colorDark   : '#000000',
+			colorLight  : '#ffffff',
+			correctLevel: QRCode.CorrectLevel.M
+		} );
+	}
+}
+<?php else : ?>
+function renderQR() {}
+<?php endif; ?>
+
 </script>
 </body>
 </html>

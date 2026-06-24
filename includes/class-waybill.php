@@ -50,6 +50,7 @@ final class WCFSL_Waybill {
 		$logo_url       = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
 		$barcode_js_url = WCFSL_URL . 'assets/js/barcode.js';
 		$print_url      = WCFSL_URL . 'assets/css/print.css';
+		$scan_url       = $s['waybill_scan_url'] ?? '';
 
 		include WCFSL_DIR . 'templates/waybill.php';
 		exit;
