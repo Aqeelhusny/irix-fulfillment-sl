@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Admin {
@@ -15,6 +15,7 @@ final class IRIXFSL_Admin {
 	private function __construct() {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices',         [ $this, 'bulk_redirect_notice' ] );
+		add_action( 'template_redirect',     [ $this, 'render_bulk_invoices' ], 5 );
 
 		// Documents meta box on single order edit
 		add_action( 'add_meta_boxes', [ $this, 'add_documents_meta_box' ] );
@@ -211,6 +212,29 @@ final class IRIXFSL_Admin {
 		}
 	}
 
+	// ─── Bulk invoice print page ──────────────────────────────────────────────
+
+	public function render_bulk_invoices(): void {
+		if ( ! isset( $_GET['irixfsl_bulk_invoice'] ) ) return; // phpcs:ignore
+		if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( esc_html__( 'Unauthorized.', 'irix-fulfillment-sl' ) );
+
+		$nonce = sanitize_text_field( $_GET['nonce'] ?? '' ); // phpcs:ignore
+		if ( ! wp_verify_nonce( $nonce, 'irixfsl_bulk_invoice' ) ) wp_die( esc_html__( 'Security check failed.', 'irix-fulfillment-sl' ) );
+
+		$ids    = array_filter( array_map( 'absint', explode( ',', sanitize_text_field( $_GET['order_ids'] ?? '' ) ) ) ); // phpcs:ignore
+		$orders = array_filter( array_map( 'wc_get_order', $ids ) );
+
+		if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'irix-fulfillment-sl' ) );
+
+		$s         = IRIXFSL_Settings::get();
+		$logo_url  = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
+		$print_url = IRIXFSL_URL . 'assets/css/print.css';
+		$bulk      = true;
+
+		include IRIXFSL_DIR . 'templates/invoice.php';
+		exit;
+	}
+
 	// ─── Assets ───────────────────────────────────────────────────────────────
 
 	public function enqueue_assets( string $hook ): void {
@@ -257,25 +281,3 @@ final class IRIXFSL_Admin {
 		}
 	}
 }
-
-// ─── Bulk invoice print page ──────────────────────────────────────────────────
-add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['irixfsl_bulk_invoice'] ) ) return; // phpcs:ignore
-	if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( esc_html__( 'Unauthorized.', 'irix-fulfillment-sl' ) );
-
-	$nonce = sanitize_text_field( $_GET['nonce'] ?? '' ); // phpcs:ignore
-	if ( ! wp_verify_nonce( $nonce, 'irixfsl_bulk_invoice' ) ) wp_die( esc_html__( 'Security check failed.', 'irix-fulfillment-sl' ) );
-
-	$ids    = array_filter( array_map( 'absint', explode( ',', sanitize_text_field( $_GET['order_ids'] ?? '' ) ) ) ); // phpcs:ignore
-	$orders = array_filter( array_map( 'wc_get_order', $ids ) );
-
-	if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'irix-fulfillment-sl' ) );
-
-	$s         = IRIXFSL_Settings::get();
-	$logo_url  = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
-	$print_url = IRIXFSL_URL . 'assets/css/print.css';
-	$bulk      = true;
-
-	include IRIXFSL_DIR . 'templates/invoice.php';
-	exit;
-}, 5 );

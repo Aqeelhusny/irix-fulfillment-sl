@@ -1,6 +1,8 @@
-﻿/* global wp, jQuery */
+/* global wp, jQuery, irixfslAdmin */
 (function ($) {
 	'use strict';
+
+	var i18n = (irixfslAdmin && irixfslAdmin.i18n) || {};
 
 	// Media uploader for company logo
 	var mediaUploader;
@@ -11,9 +13,9 @@
 			return;
 		}
 		mediaUploader = wp.media({
-			title: 'Select Company Logo',
-			button: { text: 'Use this image' },
-			multiple: false
+			title:    i18n.selectLogo   || 'Select Company Logo',
+			button:   { text: i18n.useThisImage || 'Use this image' },
+			multiple: false,
 		});
 		mediaUploader.on('select', function () {
 			var attachment = mediaUploader.state().get('selection').first().toJSON();
@@ -34,10 +36,11 @@
 	var carrierIndex = $('#irixfsl-carriers-table tbody tr').length;
 
 	$('#irixfsl-add-carrier').on('click', function () {
+		var placeholder = i18n.addCarrier || 'e.g. My Courier';
 		var row = '<tr class="irixfsl-carrier-row">' +
-			'<td><input type="text" name="irixfsl[carriers][' + carrierIndex + '][name]" value="" class="regular-text" placeholder="e.g. My Courier"></td>' +
+			'<td><input type="text" name="irixfsl[carriers][' + carrierIndex + '][name]" value="" class="regular-text" placeholder="' + placeholder + '"></td>' +
 			'<td><input type="text" name="irixfsl[carriers][' + carrierIndex + '][url]" value="" class="large-text" placeholder="https://track.example.com/{number}"></td>' +
-			'<td><button type="button" class="button irixfsl-remove-carrier">Remove</button></td>' +
+			'<td><button type="button" class="button irixfsl-remove-carrier">' + (i18n.remove || 'Remove') + '</button></td>' +
 			'</tr>';
 		$('#irixfsl-carriers-table tbody').append(row);
 		carrierIndex++;

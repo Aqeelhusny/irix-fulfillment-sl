@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Plugin Name: IRIX Fulfillment SL
  * Plugin URI:  https://irixsolutions.net

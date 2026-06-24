@@ -134,6 +134,12 @@ td.irixfsl_documents {
 	border-color: #e8a040;
 }
 
+/* ── Order status badge colors ───────────────────────────────── */
+.order-status.status-ready-to-ship,
+mark.order-status.status-ready-to-ship { background: #cb2f2f; color: #fff; }
+.order-status.status-shipped,
+mark.order-status.status-shipped        { background: #fef9e1; color: #9a6800; }
+
 /* Waybill button in Documents meta box */
 .irixfsl-doc-btn--waybill {
 	background: #fff3e0 !important;

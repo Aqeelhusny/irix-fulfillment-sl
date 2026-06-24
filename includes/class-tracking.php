@@ -1,9 +1,12 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Tracking {
 
 	private static ?self $instance = null;
+
+	/** Prevents double-save when both Classic and HPOS hooks fire in the same request. */
+	private static bool $tracking_saved = false;
 
 	const META_CARRIER  = '_irixfsl_carrier';
 	const META_NUMBER   = '_irixfsl_tracking_number';
@@ -18,9 +21,10 @@ final class IRIXFSL_Tracking {
 	}
 
 	private function __construct() {
-		add_action( 'add_meta_boxes',                     [ $this, 'add_meta_box' ] );
+		add_action( 'add_meta_boxes',                      [ $this, 'add_meta_box' ] );
+		add_action( 'admin_enqueue_scripts',               [ $this, 'enqueue_assets' ] );
 		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'save_meta' ] );
-		add_action( 'save_post_shop_order',               [ $this, 'save_meta' ] );
+		add_action( 'save_post_shop_order',                [ $this, 'save_meta' ] );
 
 		// HPOS save
 		add_action( 'woocommerce_after_order_object_save', [ $this, 'hpos_save_meta' ] );
@@ -31,7 +35,24 @@ final class IRIXFSL_Tracking {
 
 		// AJAX: manual resend
 		add_action( 'wp_ajax_irixfsl_resend_tracking', [ $this, 'ajax_resend' ] );
+	}
 
+	public function enqueue_assets( string $hook ): void {
+		$screen = get_current_screen();
+		if ( ! $screen || ! in_array( $screen->id, [ 'shop_order', 'woocommerce_page_wc-orders' ], true ) ) return;
+
+		$carriers    = IRIXFSL_Settings::get( 'carriers' ) ?: [];
+		$carrier_map = array_column( $carriers, 'url', 'name' );
+
+		wp_enqueue_script( 'irixfsl-tracking', IRIXFSL_URL . 'assets/js/tracking.js', [ 'jquery' ], IRIXFSL_VERSION, true );
+		wp_localize_script( 'irixfsl-tracking', 'irixfslTracking', [
+			'carriers' => $carrier_map,
+			'i18n'     => [
+				'sending' => __( 'Sending…', 'irix-fulfillment-sl' ),
+				'sent'    => __( 'Email Sent!', 'irix-fulfillment-sl' ),
+				'retry'   => __( 'Retry', 'irix-fulfillment-sl' ),
+			],
+		] );
 	}
 
 	public function add_meta_box(): void {
@@ -120,39 +141,11 @@ final class IRIXFSL_Tracking {
 			<?php endif; ?>
 		</p>
 		<?php endif; ?>
-		<script>
-		(function($){
-			var carriers = <?php echo wp_json_encode( array_column( $carriers, 'url', 'name' ) ); ?>;
-			function updateUrl() {
-				var name   = $('#irixfsl_carrier').val();
-				var number = $('#irixfsl_tracking_number').val().trim();
-				if ( name && number && carriers[name] ) {
-					$('#irixfsl_tracking_url').val( carriers[name].replace('{number}', number) );
-				}
-			}
-			$('#irixfsl_carrier, #irixfsl_tracking_number').on('change input', updateUrl);
-
-			$('#irixfsl-resend-tracking').on('click', function(){
-				var btn = $(this);
-				btn.prop('disabled', true).text('<?php esc_html_e( 'Sending…', 'irix-fulfillment-sl' ); ?>');
-				$.post(ajaxurl, {
-					action: 'irixfsl_resend_tracking',
-					order_id: btn.data('order'),
-					nonce: btn.data('nonce')
-				}, function(res){
-					if ( res.success ) {
-						btn.text('<?php esc_html_e( 'Email Sent!', 'irix-fulfillment-sl' ); ?>');
-					} else {
-						btn.prop('disabled', false).text('<?php esc_html_e( 'Retry', 'irix-fulfillment-sl' ); ?>');
-					}
-				});
-			});
-		})(jQuery);
-		</script>
 		<?php
 	}
 
 	public function save_meta( $post_id_or_order ): void {
+		if ( self::$tracking_saved ) return;
 		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
 
@@ -162,13 +155,16 @@ final class IRIXFSL_Tracking {
 
 		if ( ! $order ) return;
 
+		self::$tracking_saved = true;
 		$this->persist_tracking( $order );
 	}
 
 	public function hpos_save_meta( WC_Order $order ): void {
+		if ( self::$tracking_saved ) return;
 		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
 
+		self::$tracking_saved = true;
 		$this->persist_tracking( $order );
 	}
 
@@ -234,6 +230,10 @@ final class IRIXFSL_Tracking {
 			$order->save_meta_data();
 			return true;
 		}
+		wc_get_logger()->error(
+			sprintf( 'Tracking email class not found for order #%d', $order->get_id() ),
+			[ 'source' => 'irix-fulfillment-sl' ]
+		);
 		return false;
 	}
 

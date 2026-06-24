@@ -1,9 +1,12 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Order_Statuses {
 
 	private static ?self $instance = null;
+
+	/** Prevents re-entry when we call update_status() to revert inside the hook. */
+	private static bool $reverting = false;
 
 	public static function instance(): self {
 		if ( null === self::$instance ) {
@@ -31,10 +34,6 @@ final class IRIXFSL_Order_Statuses {
 		add_action( 'woocommerce_order_status_changed', [ $this, 'enforce_tracking_for_shipped' ], 10, 4 );
 
 		add_action( 'admin_notices', [ $this, 'admin_notices' ] );
-
-		// Status colours in admin — attached to admin_enqueue_scripts so we can
-		// use wp_add_inline_style() instead of a raw echo in admin_head.
-		add_action( 'admin_enqueue_scripts', [ $this, 'status_colours' ] );
 	}
 
 	public function register_statuses(): void {
@@ -146,6 +145,9 @@ final class IRIXFSL_Order_Statuses {
 	public function enforce_tracking_for_shipped( int $order_id, string $from, string $to, WC_Order $order ): void {
 		if ( $to !== 'shipped' ) return;
 
+		// Prevent re-entry: if we're already in the middle of reverting, bail out.
+		if ( self::$reverting ) return;
+
 		// Pickup and local delivery orders don't need a tracking number.
 		$type = IRIXFSL_Tracking::get_fulfillment_type( $order );
 		if ( $type !== 'standard' ) return;
@@ -153,13 +155,12 @@ final class IRIXFSL_Order_Statuses {
 		$tracking = IRIXFSL_Tracking::get_tracking( $order );
 		if ( ! empty( $tracking['number'] ) ) return;
 
-		// Temporarily unhook to avoid recursion when we revert the status.
-		remove_action( 'woocommerce_order_status_changed', [ $this, 'enforce_tracking_for_shipped' ], 10 );
+		self::$reverting = true;
 		$order->update_status(
 			$from,
 			__( 'Reverted: a waybill / tracking number is required to mark this order as Shipped.', 'irix-fulfillment-sl' )
 		);
-		add_action( 'woocommerce_order_status_changed', [ $this, 'enforce_tracking_for_shipped' ], 10, 4 );
+		self::$reverting = false;
 
 		set_transient( 'irixfsl_shipped_no_tracking_' . get_current_user_id(), $order_id, 60 );
 	}
@@ -209,19 +210,4 @@ final class IRIXFSL_Order_Statuses {
 		}
 	}
 
-	public function status_colours(): void {
-		$screen = get_current_screen();
-		if ( ! $screen || ! in_array( $screen->id, [ 'edit-shop_order', 'woocommerce_page_wc-orders' ], true ) ) {
-			return;
-		}
-
-		// woocommerce_admin_styles is enqueued on all WC admin screens.
-		wp_add_inline_style(
-			'woocommerce_admin_styles',
-			'.order-status.status-ready-to-ship,
-			 mark.order-status.status-ready-to-ship { background:#fde8e8; color:#c0392b; }
-			 .order-status.status-shipped,
-			 mark.order-status.status-shipped        { background:#fef9e1; color:#9a6800; }'
-		);
-	}
 }

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Customer_Portal {
@@ -24,7 +24,7 @@ final class IRIXFSL_Customer_Portal {
 	}
 
 	public function add_endpoints(): void {
-		add_rewrite_endpoint( self::ENDPOINT_TRACK, EP_ROOT | EP_PAGES );
+		add_rewrite_endpoint( self::ENDPOINT_TRACK, EP_PAGES );
 	}
 
 	public function add_query_vars( array $vars ): array {

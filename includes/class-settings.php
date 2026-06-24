@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Settings {
@@ -15,9 +15,9 @@ final class IRIXFSL_Settings {
 
 	private function __construct() {
 		add_action( 'admin_menu',             [ $this, 'register_menu' ] );
-		add_action( 'admin_post_irixfsl_save',  [ $this, 'handle_save' ] );
+		add_action( 'admin_post_irixfsl_save', [ $this, 'handle_save' ] );
 		add_action( 'admin_enqueue_scripts',  [ $this, 'enqueue_assets' ] );
-		$this->maybe_fix_carrier_urls();
+		add_action( 'admin_init',             [ $this, 'maybe_fix_carrier_urls' ] );
 	}
 
 	/**
@@ -28,7 +28,7 @@ final class IRIXFSL_Settings {
 	 *
 	 * Gated by an option flag so it only runs once and not on every admin load.
 	 */
-	private function maybe_fix_carrier_urls(): void {
+	public function maybe_fix_carrier_urls(): void {
 		if ( get_option( 'irixfsl_carrier_urls_migrated' ) ) return;
 
 		$settings = (array) get_option( self::OPTION_KEY, [] );
@@ -66,13 +66,20 @@ final class IRIXFSL_Settings {
 		update_option( 'irixfsl_carrier_urls_migrated', '1' );
 	}
 
-	public static function get( string $key = '' ): mixed {
-		$defaults = self::defaults();
-		$settings = (array) get_option( self::OPTION_KEY, [] );
-		$settings = array_merge( $defaults, $settings );
+	/** Request-level cache — avoids repeated get_option() calls per page load. */
+	private static array $_cache = [];
 
-		if ( $key === '' ) return $settings;
-		return $settings[ $key ] ?? null;
+	public static function get( string $key = '' ): mixed {
+		if ( empty( self::$_cache ) ) {
+			self::$_cache = array_merge( self::defaults(), (array) get_option( self::OPTION_KEY, [] ) );
+		}
+
+		if ( $key === '' ) return self::$_cache;
+		return self::$_cache[ $key ] ?? null;
+	}
+
+	public static function flush_cache(): void {
+		self::$_cache = [];
 	}
 
 	public static function defaults(): array {
@@ -260,6 +267,7 @@ final class IRIXFSL_Settings {
 		) );
 
 		update_option( self::OPTION_KEY, $data );
+		self::flush_cache();
 
 		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
 		exit;
@@ -270,6 +278,14 @@ final class IRIXFSL_Settings {
 
 		wp_enqueue_media();
 		wp_enqueue_script( 'irixfsl-admin', IRIXFSL_URL . 'assets/js/admin.js', [ 'jquery', 'media-upload' ], IRIXFSL_VERSION, true );
+		wp_localize_script( 'irixfsl-admin', 'irixfslAdmin', [
+			'i18n' => [
+				'selectLogo'   => __( 'Select Company Logo', 'irix-fulfillment-sl' ),
+				'useThisImage' => __( 'Use this image', 'irix-fulfillment-sl' ),
+				'remove'       => __( 'Remove', 'irix-fulfillment-sl' ),
+				'addCarrier'   => __( 'e.g. My Courier', 'irix-fulfillment-sl' ),
+			],
+		] );
 		wp_enqueue_style( 'irixfsl-admin', IRIXFSL_URL . 'assets/css/admin.css', [], IRIXFSL_VERSION );
 	}
 }

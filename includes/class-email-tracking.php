@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // WC_Email is guaranteed to exist here — this file is only require_once'd
