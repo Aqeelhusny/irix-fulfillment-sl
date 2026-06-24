@@ -87,14 +87,14 @@ body {
 	padding: 2.5mm 3mm 2mm;
 }
 .wb-acct-name {
-	font-size: 9px;
+	font-size: 11px;
 	font-weight: 800;
 	color: #111;
 	line-height: 1.3;
 	margin-bottom: 1.5mm;
 }
 .wb-addr-labels {
-	font-size: 7px;
+	font-size: 8.5px;
 	font-weight: 700;
 	color: #333;
 	margin-bottom: 1mm;
@@ -105,7 +105,7 @@ body {
 	font-weight: 400;
 }
 .wb-addr-body {
-	font-size: 9px;
+	font-size: 11px;
 	line-height: 1.6;
 	color: #111;
 }
@@ -116,7 +116,7 @@ body {
 	margin-top: 1.5mm;
 }
 .wb-phone {
-	font-size: 9.5px;
+	font-size: 11.5px;
 	font-weight: 700;
 	color: #000;
 	display: flex;
@@ -177,20 +177,20 @@ body {
 	overflow: hidden;
 }
 .wb-to-header {
-	font-size: 8px;
+	font-size: 9px;
 	margin-bottom: 1.5mm;
 }
 .wb-to-header strong { font-weight: 800; margin-right: 1mm; }
 .wb-to-header em { font-style: normal; color: #555; }
 .wb-to-name {
-	font-size: 13px;
+	font-size: 15px;
 	font-weight: 800;
 	line-height: 1.3;
 	color: #000;
 	margin-bottom: 1mm;
 }
 .wb-to-addr {
-	font-size: 10px;
+	font-size: 12px;
 	line-height: 1.6;
 	color: #222;
 }
@@ -198,7 +198,7 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 1mm;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 700;
 	color: #000;
 	margin-top: 1.5mm;
@@ -231,6 +231,7 @@ body {
 	border-right: 1px solid #ddd;
 	flex-shrink: 0;
 	white-space: nowrap;
+	align-self: center;
 }
 .wb-product-names {
 	padding: 2mm 2.5mm;
