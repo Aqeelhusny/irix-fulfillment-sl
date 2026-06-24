@@ -1,5 +1,5 @@
-/* Minimal Code 128B barcode renderer — no external dependencies */
-/* MIT-compatible implementation for WC Fulfillment SL */
+﻿/* Minimal Code 128B barcode renderer — no external dependencies */
+/* MIT-compatible implementation for IRIX Fulfillment SL */
 (function (global) {
 	'use strict';
 
@@ -83,6 +83,6 @@
 		}
 	}
 
-	global.WCFSLBarcode = { draw: draw };
+	global.IRIXFSLBarcode = { draw: draw };
 
 }(typeof window !== 'undefined' ? window : this));

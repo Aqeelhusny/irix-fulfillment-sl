@@ -1,14 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
 <meta charset="UTF-8">
-<title><?php esc_html_e( 'Packing Slips', 'wc-fulfillment-sl' ); ?></title>
+<title><?php esc_html_e( 'Packing Slips', 'irix-fulfillment-sl' ); ?></title>
 <link rel="stylesheet" href="<?php echo esc_url( $print_url ); ?>">
 <style>
 	* { box-sizing: border-box; margin: 0; padding: 0; }
 	body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #f4f4f4; }
-	.wcfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 14mm 14mm; page-break-after: always; }
-	.wcfsl-doc:last-child { page-break-after: auto; }
+	.irixfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 14mm 14mm; page-break-after: always; }
+	.irixfsl-doc:last-child { page-break-after: auto; }
 
 	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
 	.company-logo img { max-height: 55px; }
@@ -43,18 +43,18 @@
 	@media print {
 		body { background: white; }
 		.print-bar { display: none; }
-		.wcfsl-doc { margin: 0; padding: 12mm; box-shadow: none; width: 100%; }
+		.irixfsl-doc { margin: 0; padding: 12mm; box-shadow: none; width: 100%; }
 	}
 </style>
 </head>
 <body>
 <div class="print-bar">
-	<button onclick="window.print()"><?php esc_html_e( 'Print Packing Slips', 'wc-fulfillment-sl' ); ?></button>
+	<button onclick="window.print()"><?php esc_html_e( 'Print Packing Slips', 'irix-fulfillment-sl' ); ?></button>
 </div>
 
 <?php foreach ( $orders as $order ) :
 	$items    = $order->get_items();
-	$tracking = WCFSL_Tracking::get_tracking( $order );
+	$tracking = IRIXFSL_Tracking::get_tracking( $order );
 	$has_ship = $order->get_shipping_address_1();
 	$ship_to  = WC()->countries->get_formatted_address( $has_ship ? [
 		'address_1' => $order->get_shipping_address_1(),
@@ -72,7 +72,7 @@
 		'country'   => $order->get_billing_country(),
 	] );
 	?>
-	<div class="wcfsl-doc">
+	<div class="irixfsl-doc">
 		<div class="doc-header">
 			<div>
 				<?php if ( $logo_url ) : ?>
@@ -84,11 +84,11 @@
 				</div>
 			</div>
 			<div class="doc-title" style="text-align:right">
-				<h1><?php esc_html_e( 'Packing Slip', 'wc-fulfillment-sl' ); ?></h1>
+				<h1><?php esc_html_e( 'Packing Slip', 'irix-fulfillment-sl' ); ?></h1>
 				<div class="slip-meta">
-					<div><strong><?php esc_html_e( 'Order #', 'wc-fulfillment-sl' ); ?></strong><?php echo esc_html( $order->get_order_number() ); ?></div>
-					<div><strong><?php esc_html_e( 'Date:', 'wc-fulfillment-sl' ); ?></strong><?php echo esc_html( wc_format_datetime( $order->get_date_created() ) ); ?></div>
-					<div><strong><?php esc_html_e( 'Items:', 'wc-fulfillment-sl' ); ?></strong><?php echo esc_html( $order->get_item_count() ); ?></div>
+					<div><strong><?php esc_html_e( 'Order #', 'irix-fulfillment-sl' ); ?></strong><?php echo esc_html( $order->get_order_number() ); ?></div>
+					<div><strong><?php esc_html_e( 'Date:', 'irix-fulfillment-sl' ); ?></strong><?php echo esc_html( wc_format_datetime( $order->get_date_created() ) ); ?></div>
+					<div><strong><?php esc_html_e( 'Items:', 'irix-fulfillment-sl' ); ?></strong><?php echo esc_html( $order->get_item_count() ); ?></div>
 				</div>
 			</div>
 		</div>
@@ -97,7 +97,7 @@
 
 		<div class="address-row">
 			<div class="address-box">
-				<h4><?php esc_html_e( 'Ship To', 'wc-fulfillment-sl' ); ?></h4>
+				<h4><?php esc_html_e( 'Ship To', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
 					<strong><?php echo esc_html( $order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name() ); ?></strong><br>
 					<?php echo wp_kses_post( $ship_to ); ?>
@@ -105,7 +105,7 @@
 				</address>
 			</div>
 			<div class="address-box">
-				<h4><?php esc_html_e( 'Ship From', 'wc-fulfillment-sl' ); ?></h4>
+				<h4><?php esc_html_e( 'Ship From', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
 					<strong><?php echo esc_html( $s['company_name'] ); ?></strong><br>
 					<?php echo nl2br( esc_html( $s['company_address'] ) ); ?>
@@ -116,10 +116,10 @@
 		<table class="items-table">
 			<thead>
 				<tr>
-					<th style="width:50%"><?php esc_html_e( 'Product', 'wc-fulfillment-sl' ); ?></th>
-					<th><?php esc_html_e( 'SKU', 'wc-fulfillment-sl' ); ?></th>
-					<th class="text-right"><?php esc_html_e( 'Qty', 'wc-fulfillment-sl' ); ?></th>
-					<th><?php esc_html_e( 'Picked', 'wc-fulfillment-sl' ); ?></th>
+					<th style="width:50%"><?php esc_html_e( 'Product', 'irix-fulfillment-sl' ); ?></th>
+					<th><?php esc_html_e( 'SKU', 'irix-fulfillment-sl' ); ?></th>
+					<th class="text-right"><?php esc_html_e( 'Qty', 'irix-fulfillment-sl' ); ?></th>
+					<th><?php esc_html_e( 'Picked', 'irix-fulfillment-sl' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -151,20 +151,20 @@
 
 		<?php if ( $tracking['number'] ) : ?>
 		<div class="tracking-row">
-			<strong><?php esc_html_e( 'Tracking Information', 'wc-fulfillment-sl' ); ?></strong>
-			<?php esc_html_e( 'Carrier:', 'wc-fulfillment-sl' ); ?> <?php echo esc_html( $tracking['carrier'] ); ?> &nbsp;|&nbsp;
-			<?php esc_html_e( 'Tracking #:', 'wc-fulfillment-sl' ); ?> <?php echo esc_html( $tracking['number'] ); ?>
+			<strong><?php esc_html_e( 'Tracking Information', 'irix-fulfillment-sl' ); ?></strong>
+			<?php esc_html_e( 'Carrier:', 'irix-fulfillment-sl' ); ?> <?php echo esc_html( $tracking['carrier'] ); ?> &nbsp;|&nbsp;
+			<?php esc_html_e( 'Tracking #:', 'irix-fulfillment-sl' ); ?> <?php echo esc_html( $tracking['number'] ); ?>
 		</div>
 		<?php endif; ?>
 
 		<?php if ( $order->get_customer_note() ) : ?>
 		<p style="margin-top:12px;font-size:12px;padding:8px 10px;background:#fffbe6;border-left:3px solid #f0b429">
-			<strong><?php esc_html_e( 'Customer Note:', 'wc-fulfillment-sl' ); ?></strong>
+			<strong><?php esc_html_e( 'Customer Note:', 'irix-fulfillment-sl' ); ?></strong>
 			<?php echo esc_html( $order->get_customer_note() ); ?>
 		</p>
 		<?php endif; ?>
 
-		<div class="doc-footer"><?php echo esc_html( $s['company_name'] ); ?> &mdash; <?php esc_html_e( 'Thank you!', 'wc-fulfillment-sl' ); ?></div>
+		<div class="doc-footer"><?php echo esc_html( $s['company_name'] ); ?> &mdash; <?php esc_html_e( 'Thank you!', 'irix-fulfillment-sl' ); ?></div>
 	</div>
 <?php endforeach; ?>
 

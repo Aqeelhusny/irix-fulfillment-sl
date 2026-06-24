@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title><?php printf( esc_html__( 'Waybill — Order #%s', 'wc-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></title>
+<title><?php printf( esc_html__( 'Waybill — Order #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -366,7 +366,7 @@ body {
 <body>
 
 <?php
-$s         = WCFSL_Settings::get();
+$s         = IRIXFSL_Settings::get();
 $ship_name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
 if ( ! $ship_name ) {
 	$ship_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
@@ -398,7 +398,7 @@ if ( count( $item_names ) > 4 ) {
 ?>
 
 <div class="print-bar">
-	<span><?php printf( esc_html__( 'Order #%s', 'wc-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></span>
+	<span><?php printf( esc_html__( 'Order #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></span>
 	<button onclick="window.print()">Print</button>
 </div>
 
@@ -439,12 +439,12 @@ if ( count( $item_names ) > 4 ) {
 			        aria-label="<?php echo esc_attr( $tracking['number'] ); ?>"></canvas>
 			<div class="wb-barcode-ref">
 				<span class="wb-barcode-num"><?php echo esc_html( $tracking['number'] ); ?></span>
-				<span class="wb-barcode-hint"><?php esc_html_e( '(Waybill / Tracking No.)', 'wc-fulfillment-sl' ); ?></span>
+				<span class="wb-barcode-hint"><?php esc_html_e( '(Waybill / Tracking No.)', 'irix-fulfillment-sl' ); ?></span>
 			</div>
 		<?php else : ?>
 			<div style="height:14mm;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;">
 				<span style="font-size:7.5px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">
-					<?php esc_html_e( 'Tracking number to be assigned', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Tracking number to be assigned', 'irix-fulfillment-sl' ); ?>
 				</span>
 			</div>
 		<?php endif; ?>
@@ -453,8 +453,8 @@ if ( count( $item_names ) > 4 ) {
 	<!-- 3. TO / recipient -->
 	<div class="wb-to">
 		<div class="wb-to-header">
-			<strong><?php esc_html_e( 'TO', 'wc-fulfillment-sl' ); ?></strong>
-			<em><?php esc_html_e( '— Delivery Address', 'wc-fulfillment-sl' ); ?></em>
+			<strong><?php esc_html_e( 'TO', 'irix-fulfillment-sl' ); ?></strong>
+			<em><?php esc_html_e( '— Delivery Address', 'irix-fulfillment-sl' ); ?></em>
 		</div>
 		<div class="wb-to-name"><?php echo esc_html( $ship_name ); ?></div>
 		<?php if ( $ship_addr ) : ?>
@@ -468,9 +468,9 @@ if ( count( $item_names ) > 4 ) {
 	<!-- 4. Product names | Sender Account -->
 	<div class="wb-product-row">
 		<div class="wb-product-left">
-			<div class="wb-product-tag"><?php esc_html_e( 'Order', 'wc-fulfillment-sl' ); ?></div>
+			<div class="wb-product-tag"><?php esc_html_e( 'Order', 'irix-fulfillment-sl' ); ?></div>
 			<div class="wb-product-names">
-				<span class="wb-product-label"><?php esc_html_e( 'Order ID', 'wc-fulfillment-sl' ); ?></span>
+				<span class="wb-product-label"><?php esc_html_e( 'Order ID', 'irix-fulfillment-sl' ); ?></span>
 				#<?php echo esc_html( $order->get_order_number() ); ?>
 			</div>
 		</div>
@@ -478,7 +478,7 @@ if ( count( $item_names ) > 4 ) {
 			<?php if ( $tracking['carrier'] ) : ?>
 				<?php echo esc_html( $tracking['carrier'] ); ?>
 			<?php else : ?>
-				<?php esc_html_e( 'Sender Account', 'wc-fulfillment-sl' ); ?>
+				<?php esc_html_e( 'Sender Account', 'irix-fulfillment-sl' ); ?>
 			<?php endif; ?>
 		</div>
 	</div>
@@ -486,10 +486,10 @@ if ( count( $item_names ) > 4 ) {
 	<!-- 5. Pieces / Weight -->
 	<div class="wb-meta-row">
 		<div class="wb-meta-left">
-			<div><strong><?php esc_html_e( 'PIECES :', 'wc-fulfillment-sl' ); ?></strong>
-				<?php echo esc_html( $item_count . ' ' . _n( 'item', 'items', $item_count, 'wc-fulfillment-sl' ) ); ?>
+			<div><strong><?php esc_html_e( 'PIECES :', 'irix-fulfillment-sl' ); ?></strong>
+				<?php echo esc_html( $item_count . ' ' . _n( 'item', 'items', $item_count, 'irix-fulfillment-sl' ) ); ?>
 			</div>
-			<div><strong><?php esc_html_e( 'WEIGHT :', 'wc-fulfillment-sl' ); ?></strong>
+			<div><strong><?php esc_html_e( 'WEIGHT :', 'irix-fulfillment-sl' ); ?></strong>
 				<?php
 				$weight = $order->get_meta( '_order_weight' ) ?: '—';
 				echo esc_html( $weight );
@@ -498,7 +498,7 @@ if ( count( $item_names ) > 4 ) {
 		</div>
 		<div class="wb-meta-box">
 			<div class="wb-meta-box-count"><?php echo esc_html( $item_count ); ?></div>
-			<div class="wb-meta-box-label"><?php echo esc_html( _n( 'Item', 'Items', $item_count, 'wc-fulfillment-sl' ) ); ?></div>
+			<div class="wb-meta-box-label"><?php echo esc_html( _n( 'Item', 'Items', $item_count, 'irix-fulfillment-sl' ) ); ?></div>
 		</div>
 	</div>
 
@@ -509,7 +509,7 @@ if ( count( $item_names ) > 4 ) {
 			<div id="wb-qr-code"></div>
 		</div>
 		<div class="wb-qr-text">
-			<div class="wb-qr-label"><?php esc_html_e( 'Scan to visit', 'wc-fulfillment-sl' ); ?></div>
+			<div class="wb-qr-label"><?php esc_html_e( 'Scan to visit', 'irix-fulfillment-sl' ); ?></div>
 			<div class="wb-qr-url"><?php echo esc_html( $scan_url ); ?></div>
 		</div>
 	</div>
@@ -526,12 +526,12 @@ if ( count( $item_names ) > 4 ) {
 	var trackingNum = <?php echo wp_json_encode( $tracking['number'] ); ?>;
 
 	function renderBarcodes() {
-		if ( ! window.WCFSLBarcode ) return;
+		if ( ! window.IRIXFSLBarcode ) return;
 
 		// Main tracking barcode
 		var mainCanvas = document.getElementById('wb-barcode-canvas');
 		if ( mainCanvas && trackingNum ) {
-			WCFSLBarcode.draw( mainCanvas, trackingNum, {
+			IRIXFSLBarcode.draw( mainCanvas, trackingNum, {
 				moduleWidth : 1.5,
 				height      : 48,
 				quiet       : 8
@@ -554,13 +554,13 @@ if ( count( $item_names ) > 4 ) {
 }());
 
 <?php if ( ! empty( $scan_url ) ) : ?>
-var wcfslScanUrl = <?php echo wp_json_encode( $scan_url ); ?>;
+var IRIXFSLScanUrl = <?php echo wp_json_encode( $scan_url ); ?>;
 function renderQR() {
 	var el = document.getElementById('wb-qr-code');
-	if ( ! el || ! wcfslScanUrl ) return;
+	if ( ! el || ! IRIXFSLScanUrl ) return;
 	if ( typeof QRCode !== 'undefined' ) {
 		new QRCode( el, {
-			text        : wcfslScanUrl,
+			text        : IRIXFSLScanUrl,
 			width       : 80,
 			height      : 80,
 			colorDark   : '#000000',

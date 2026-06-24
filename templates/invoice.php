@@ -1,21 +1,21 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php
 	if ( ! empty( $bulk ) ) {
-		esc_html_e( 'Invoices', 'wc-fulfillment-sl' );
+		esc_html_e( 'Invoices', 'irix-fulfillment-sl' );
 	} else {
-		printf( esc_html__( 'Invoice #%s', 'wc-fulfillment-sl' ), esc_html( $order->get_order_number() ) );
+		printf( esc_html__( 'Invoice #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) );
 	}
 ?></title>
 <link rel="stylesheet" href="<?php echo esc_url( $print_url ); ?>">
 <style>
 	* { box-sizing: border-box; margin: 0; padding: 0; }
 	body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #f4f4f4; }
-	.wcfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 20mm 18mm; page-break-after: always; }
-	.wcfsl-doc:last-child { page-break-after: auto; }
+	.irixfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 20mm 18mm; page-break-after: always; }
+	.irixfsl-doc:last-child { page-break-after: auto; }
 
 	/* Header */
 	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
@@ -71,13 +71,13 @@
 	@media print {
 		body { background: white; }
 		.print-bar { display: none; }
-		.wcfsl-doc { margin: 0; padding: 15mm 12mm; box-shadow: none; width: 100%; }
+		.irixfsl-doc { margin: 0; padding: 15mm 12mm; box-shadow: none; width: 100%; }
 	}
 </style>
 </head>
 <body>
 <div class="print-bar">
-	<button onclick="window.print()"><?php esc_html_e( 'Print / Save as PDF', 'wc-fulfillment-sl' ); ?></button>
+	<button onclick="window.print()"><?php esc_html_e( 'Print / Save as PDF', 'irix-fulfillment-sl' ); ?></button>
 </div>
 
 <?php
@@ -85,7 +85,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 	$currency   = $order->get_currency();
 	$items      = $order->get_items();
 	$order_date = wc_format_datetime( $order->get_date_created() );
-	$tracking   = WCFSL_Tracking::get_tracking( $order );
+	$tracking   = IRIXFSL_Tracking::get_tracking( $order );
 
 	// ── Determine payment badge ───────────────────────────────────────
 	$payment_method = $order->get_payment_method();   // 'cod', 'bacs', 'paypal', …
@@ -94,26 +94,26 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 	if ( $order_status === 'completed' ) {
 		// A completed order is always fully settled regardless of payment method.
 		$badge_class = 'paid';
-		$badge_label = __( 'Paid', 'wc-fulfillment-sl' );
+		$badge_label = __( 'Paid', 'irix-fulfillment-sl' );
 	} elseif ( $payment_method === 'cod' ) {
 		// Cash on delivery — money collected at the door, not at checkout.
 		$badge_class = 'not-paid';
-		$badge_label = __( 'Not Paid', 'wc-fulfillment-sl' );
+		$badge_label = __( 'Not Paid', 'irix-fulfillment-sl' );
 	} elseif ( $payment_method === 'bacs' ) {
 		// Bank transfer — pending until admin confirms receipt (moves to processing).
 		$badge_class = ( $order_status === 'processing' ) ? 'paid' : 'pending';
 		$badge_label = ( $badge_class === 'paid' )
-			? __( 'Paid', 'wc-fulfillment-sl' )
-			: __( 'Pending Payment', 'wc-fulfillment-sl' );
+			? __( 'Paid', 'irix-fulfillment-sl' )
+			: __( 'Pending Payment', 'irix-fulfillment-sl' );
 	} else {
 		// All other gateways (card, PayPal, etc.) — trust WooCommerce's is_paid().
 		$badge_class = $order->is_paid() ? 'paid' : 'pending';
 		$badge_label = ( $badge_class === 'paid' )
-			? __( 'Paid', 'wc-fulfillment-sl' )
-			: __( 'Pending Payment', 'wc-fulfillment-sl' );
+			? __( 'Paid', 'irix-fulfillment-sl' )
+			: __( 'Pending Payment', 'irix-fulfillment-sl' );
 	}
 	?>
-	<div class="wcfsl-doc">
+	<div class="irixfsl-doc">
 		<div class="doc-header">
 			<div class="company-left">
 				<?php if ( $logo_url ) : ?>
@@ -127,11 +127,11 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 				</div>
 			</div>
 			<div class="doc-title">
-				<h1><?php esc_html_e( 'Invoice', 'wc-fulfillment-sl' ); ?></h1>
+				<h1><?php esc_html_e( 'Invoice', 'irix-fulfillment-sl' ); ?></h1>
 				<div class="invoice-meta">
-					<div><strong><?php esc_html_e( 'Invoice #', 'wc-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order->get_order_number() ); ?></div>
-					<div><strong><?php esc_html_e( 'Date:', 'wc-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order_date ); ?></div>
-					<div><strong><?php esc_html_e( 'Payment:', 'wc-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order->get_payment_method_title() ); ?></div>
+					<div><strong><?php esc_html_e( 'Invoice #', 'irix-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order->get_order_number() ); ?></div>
+					<div><strong><?php esc_html_e( 'Date:', 'irix-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order_date ); ?></div>
+					<div><strong><?php esc_html_e( 'Payment:', 'irix-fulfillment-sl' ); ?></strong> <?php echo esc_html( $order->get_payment_method_title() ); ?></div>
 					<div>
 						<span class="payment-status <?php echo esc_attr( $badge_class ); ?>">
 							<?php echo esc_html( $badge_label ); ?>
@@ -145,7 +145,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 
 		<div class="address-row">
 			<div class="address-box">
-				<h4><?php esc_html_e( 'Bill To', 'wc-fulfillment-sl' ); ?></h4>
+				<h4><?php esc_html_e( 'Bill To', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
 					<strong><?php echo esc_html( $order->get_formatted_billing_full_name() ); ?></strong><br>
 					<?php
@@ -164,7 +164,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 				</address>
 			</div>
 			<div class="address-box">
-				<h4><?php esc_html_e( 'Ship To', 'wc-fulfillment-sl' ); ?></h4>
+				<h4><?php esc_html_e( 'Ship To', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
 					<?php
 					$has_shipping = $order->get_shipping_address_1();
@@ -193,12 +193,12 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 			</div>
 			<?php if ( $tracking['carrier'] ) : ?>
 			<div class="address-box">
-				<h4><?php esc_html_e( 'Tracking', 'wc-fulfillment-sl' ); ?></h4>
+				<h4><?php esc_html_e( 'Tracking', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
 					<strong><?php echo esc_html( $tracking['carrier'] ); ?></strong><br>
 					<?php echo esc_html( $tracking['number'] ); ?>
 					<?php if ( $tracking['url'] ) : ?>
-						<br><a href="<?php echo esc_url( $tracking['url'] ); ?>"><?php esc_html_e( 'Track shipment', 'wc-fulfillment-sl' ); ?></a>
+						<br><a href="<?php echo esc_url( $tracking['url'] ); ?>"><?php esc_html_e( 'Track shipment', 'irix-fulfillment-sl' ); ?></a>
 					<?php endif; ?>
 				</address>
 			</div>
@@ -208,11 +208,11 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 		<table class="items-table">
 			<thead>
 				<tr>
-					<th style="width:40%"><?php esc_html_e( 'Product', 'wc-fulfillment-sl' ); ?></th>
-					<th><?php esc_html_e( 'SKU', 'wc-fulfillment-sl' ); ?></th>
-					<th class="text-right"><?php esc_html_e( 'Unit Price', 'wc-fulfillment-sl' ); ?></th>
-					<th class="text-right"><?php esc_html_e( 'Qty', 'wc-fulfillment-sl' ); ?></th>
-					<th class="text-right"><?php esc_html_e( 'Total', 'wc-fulfillment-sl' ); ?></th>
+					<th style="width:40%"><?php esc_html_e( 'Product', 'irix-fulfillment-sl' ); ?></th>
+					<th><?php esc_html_e( 'SKU', 'irix-fulfillment-sl' ); ?></th>
+					<th class="text-right"><?php esc_html_e( 'Unit Price', 'irix-fulfillment-sl' ); ?></th>
+					<th class="text-right"><?php esc_html_e( 'Qty', 'irix-fulfillment-sl' ); ?></th>
+					<th class="text-right"><?php esc_html_e( 'Total', 'irix-fulfillment-sl' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>
@@ -258,29 +258,29 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 				$grand_total = $order->get_total();
 				?>
 				<tr>
-					<td><?php esc_html_e( 'Subtotal', 'wc-fulfillment-sl' ); ?></td>
+					<td><?php esc_html_e( 'Subtotal', 'irix-fulfillment-sl' ); ?></td>
 					<td><?php echo wp_kses_post( wc_price( $subtotal, [ 'currency' => $currency ] ) ); ?></td>
 				</tr>
 				<?php if ( $shipping > 0 ) : ?>
 				<tr>
-					<td><?php esc_html_e( 'Shipping', 'wc-fulfillment-sl' ); ?></td>
+					<td><?php esc_html_e( 'Shipping', 'irix-fulfillment-sl' ); ?></td>
 					<td><?php echo wp_kses_post( wc_price( $shipping, [ 'currency' => $currency ] ) ); ?></td>
 				</tr>
 				<?php endif; ?>
 				<?php if ( $discount > 0 ) : ?>
 				<tr>
-					<td><?php esc_html_e( 'Discount', 'wc-fulfillment-sl' ); ?></td>
+					<td><?php esc_html_e( 'Discount', 'irix-fulfillment-sl' ); ?></td>
 					<td>-<?php echo wp_kses_post( wc_price( $discount, [ 'currency' => $currency ] ) ); ?></td>
 				</tr>
 				<?php endif; ?>
 				<?php if ( $tax > 0 ) : ?>
 				<tr>
-					<td><?php esc_html_e( 'Tax', 'wc-fulfillment-sl' ); ?></td>
+					<td><?php esc_html_e( 'Tax', 'irix-fulfillment-sl' ); ?></td>
 					<td><?php echo wp_kses_post( wc_price( $tax, [ 'currency' => $currency ] ) ); ?></td>
 				</tr>
 				<?php endif; ?>
 				<tr class="grand-total">
-					<td><?php esc_html_e( 'Total', 'wc-fulfillment-sl' ); ?></td>
+					<td><?php esc_html_e( 'Total', 'irix-fulfillment-sl' ); ?></td>
 					<td><?php echo wp_kses_post( wc_price( $grand_total, [ 'currency' => $currency ] ) ); ?></td>
 				</tr>
 			</table>
@@ -288,7 +288,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 
 		<?php if ( $order->get_customer_note() ) : ?>
 		<p style="margin-top:20px;font-size:12px;color:#555">
-			<strong><?php esc_html_e( 'Note:', 'wc-fulfillment-sl' ); ?></strong>
+			<strong><?php esc_html_e( 'Note:', 'irix-fulfillment-sl' ); ?></strong>
 			<?php echo esc_html( $order->get_customer_note() ); ?>
 		</p>
 		<?php endif; ?>

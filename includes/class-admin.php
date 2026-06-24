@@ -1,7 +1,7 @@
-<?php
+﻿<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-final class WCFSL_Admin {
+final class IRIXFSL_Admin {
 
 	private static ?self $instance = null;
 
@@ -41,8 +41,8 @@ final class WCFSL_Admin {
 	public function add_documents_meta_box(): void {
 		foreach ( [ 'shop_order', 'woocommerce_page_wc-orders' ] as $screen ) {
 			add_meta_box(
-				'wcfsl-documents',
-				__( 'Fulfillment', 'wc-fulfillment-sl' ),
+				'irixfsl-documents',
+				__( 'Fulfillment', 'irix-fulfillment-sl' ),
 				[ $this, 'render_documents_meta_box' ],
 				$screen,
 				'side',
@@ -57,49 +57,49 @@ final class WCFSL_Admin {
 			: wc_get_order( $post_or_order->ID );
 
 		if ( ! $order || ! $order->get_id() ) {
-			echo '<p class="wcfsl-doc-unsaved">'
-				. esc_html__( 'Save the order first to access documents.', 'wc-fulfillment-sl' )
+			echo '<p class="irixfsl-doc-unsaved">'
+				. esc_html__( 'Save the order first to access documents.', 'irix-fulfillment-sl' )
 				. '</p>';
 			return;
 		}
 
-		$invoice_url  = WCFSL_Invoice::invoice_url( $order->get_id() );
-		$slip_url     = WCFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
-		$tracking     = WCFSL_Tracking::get_tracking( $order );
+		$invoice_url  = IRIXFSL_Invoice::invoice_url( $order->get_id() );
+		$slip_url     = IRIXFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
+		$tracking     = IRIXFSL_Tracking::get_tracking( $order );
 		$has_tracking = ! empty( $tracking['number'] );
 		$is_ready     = $order->has_status( 'ready-to-ship' );
 		$waybill_ok   = $has_tracking || $is_ready;
 		?>
-		<div class="wcfsl-doc-buttons">
+		<div class="irixfsl-doc-buttons">
 			<a href="<?php echo esc_url( $invoice_url ); ?>"
 			   target="_blank"
 			   rel="noopener noreferrer"
-			   class="button button-primary wcfsl-doc-btn">
+			   class="button button-primary irixfsl-doc-btn">
 				<span class="dashicons dashicons-media-spreadsheet"></span>
-				<?php esc_html_e( 'Download Invoice', 'wc-fulfillment-sl' ); ?>
+				<?php esc_html_e( 'Download Invoice', 'irix-fulfillment-sl' ); ?>
 			</a>
 			<a href="<?php echo esc_url( $slip_url ); ?>"
 			   target="_blank"
 			   rel="noopener noreferrer"
-			   class="button wcfsl-doc-btn">
+			   class="button irixfsl-doc-btn">
 				<span class="dashicons dashicons-printer"></span>
-				<?php esc_html_e( 'Print Packing Slip', 'wc-fulfillment-sl' ); ?>
+				<?php esc_html_e( 'Print Packing Slip', 'irix-fulfillment-sl' ); ?>
 			</a>
 			<?php if ( $waybill_ok ) : ?>
-				<a href="<?php echo esc_url( WCFSL_Waybill::waybill_url( $order->get_id() ) ); ?>"
+				<a href="<?php echo esc_url( IRIXFSL_Waybill::waybill_url( $order->get_id() ) ); ?>"
 				   target="_blank"
 				   rel="noopener noreferrer"
-				   class="button wcfsl-doc-btn wcfsl-doc-btn--waybill">
+				   class="button irixfsl-doc-btn irixfsl-doc-btn--waybill">
 					<span class="dashicons dashicons-location-alt"></span>
-					<?php esc_html_e( 'Print Waybill', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Print Waybill', 'irix-fulfillment-sl' ); ?>
 				</a>
 			<?php else : ?>
 				<button type="button"
-				        class="button wcfsl-doc-btn wcfsl-doc-btn--waybill-disabled"
+				        class="button irixfsl-doc-btn irixfsl-doc-btn--waybill-disabled"
 				        disabled
-				        title="<?php esc_attr_e( 'Mark order as Ready to Ship or save a tracking number to enable the waybill.', 'wc-fulfillment-sl' ); ?>">
+				        title="<?php esc_attr_e( 'Mark order as Ready to Ship or save a tracking number to enable the waybill.', 'irix-fulfillment-sl' ); ?>">
 					<span class="dashicons dashicons-location-alt"></span>
-					<?php esc_html_e( 'Print Waybill', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Print Waybill', 'irix-fulfillment-sl' ); ?>
 				</button>
 			<?php endif; ?>
 		</div>
@@ -113,62 +113,62 @@ final class WCFSL_Admin {
 		$new = [];
 		foreach ( $columns as $key => $label ) {
 			if ( $key === 'wc_actions' ) {
-				$new['wcfsl_documents'] = __( 'Fulfillment', 'wc-fulfillment-sl' );
+				$new['irixfsl_documents'] = __( 'Fulfillment', 'irix-fulfillment-sl' );
 			}
 			$new[ $key ] = $label;
 		}
 		// Fallback: append if wc_actions not found
-		if ( ! isset( $new['wcfsl_documents'] ) ) {
-			$new['wcfsl_documents'] = __( 'Fulfillment', 'wc-fulfillment-sl' );
+		if ( ! isset( $new['irixfsl_documents'] ) ) {
+			$new['irixfsl_documents'] = __( 'Fulfillment', 'irix-fulfillment-sl' );
 		}
 		return $new;
 	}
 
 	/** HPOS: receives ($column_name, WC_Order) */
 	public function render_documents_column_hpos( string $column, WC_Order $order ): void {
-		if ( $column !== 'wcfsl_documents' ) return;
+		if ( $column !== 'irixfsl_documents' ) return;
 		$this->render_document_links( $order );
 	}
 
 	/** Classic: receives ($column_name, $post_id) */
 	public function render_documents_column_classic( string $column, int $post_id ): void {
-		if ( $column !== 'wcfsl_documents' ) return;
+		if ( $column !== 'irixfsl_documents' ) return;
 		$order = wc_get_order( $post_id );
 		if ( $order ) $this->render_document_links( $order );
 	}
 
 	private function render_document_links( WC_Order $order ): void {
-		$invoice_url  = WCFSL_Invoice::invoice_url( $order->get_id() );
-		$slip_url     = WCFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
-		$tracking     = WCFSL_Tracking::get_tracking( $order );
+		$invoice_url  = IRIXFSL_Invoice::invoice_url( $order->get_id() );
+		$slip_url     = IRIXFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
+		$tracking     = IRIXFSL_Tracking::get_tracking( $order );
 		$has_tracking = ! empty( $tracking['number'] );
 		$waybill_ok   = $has_tracking || $order->has_status( 'ready-to-ship' );
 		?>
-		<div class="wcfsl-list-doc-links">
+		<div class="irixfsl-list-doc-links">
 			<a href="<?php echo esc_url( $invoice_url ); ?>"
 			   target="_blank"
 			   rel="noopener noreferrer"
-			   class="wcfsl-list-link wcfsl-list-link--invoice"
-			   title="<?php esc_attr_e( 'Download Invoice', 'wc-fulfillment-sl' ); ?>">
+			   class="irixfsl-list-link irixfsl-list-link--invoice"
+			   title="<?php esc_attr_e( 'Download Invoice', 'irix-fulfillment-sl' ); ?>">
 				<span class="dashicons dashicons-media-spreadsheet"></span>
-				<?php esc_html_e( 'Invoice', 'wc-fulfillment-sl' ); ?>
+				<?php esc_html_e( 'Invoice', 'irix-fulfillment-sl' ); ?>
 			</a>
 			<a href="<?php echo esc_url( $slip_url ); ?>"
 			   target="_blank"
 			   rel="noopener noreferrer"
-			   class="wcfsl-list-link wcfsl-list-link--slip"
-			   title="<?php esc_attr_e( 'Print Packing Slip', 'wc-fulfillment-sl' ); ?>">
+			   class="irixfsl-list-link irixfsl-list-link--slip"
+			   title="<?php esc_attr_e( 'Print Packing Slip', 'irix-fulfillment-sl' ); ?>">
 				<span class="dashicons dashicons-printer"></span>
-				<?php esc_html_e( 'Packing Slip', 'wc-fulfillment-sl' ); ?>
+				<?php esc_html_e( 'Packing Slip', 'irix-fulfillment-sl' ); ?>
 			</a>
 			<?php if ( $waybill_ok ) : ?>
-				<a href="<?php echo esc_url( WCFSL_Waybill::waybill_url( $order->get_id() ) ); ?>"
+				<a href="<?php echo esc_url( IRIXFSL_Waybill::waybill_url( $order->get_id() ) ); ?>"
 				   target="_blank"
 				   rel="noopener noreferrer"
-				   class="wcfsl-list-link wcfsl-list-link--waybill"
-				   title="<?php esc_attr_e( 'Print Waybill', 'wc-fulfillment-sl' ); ?>">
+				   class="irixfsl-list-link irixfsl-list-link--waybill"
+				   title="<?php esc_attr_e( 'Print Waybill', 'irix-fulfillment-sl' ); ?>">
 					<span class="dashicons dashicons-location-alt"></span>
-					<?php esc_html_e( 'Waybill', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Waybill', 'irix-fulfillment-sl' ); ?>
 				</a>
 			<?php endif; ?>
 		</div>
@@ -178,27 +178,27 @@ final class WCFSL_Admin {
 	// ─── Bulk actions ─────────────────────────────────────────────────────────
 
 	public function add_bulk_actions( array $actions ): array {
-		$actions['print_invoices']     = __( 'Print Invoices', 'wc-fulfillment-sl' );
-		$actions['print_packing_slips'] = __( 'Print Packing Slips', 'wc-fulfillment-sl' );
+		$actions['print_invoices']     = __( 'Print Invoices', 'irix-fulfillment-sl' );
+		$actions['print_packing_slips'] = __( 'Print Packing Slips', 'irix-fulfillment-sl' );
 		return $actions;
 	}
 
 	public function handle_bulk_invoices( string $redirect, string $action, array $ids ): string {
 		$url = add_query_arg( [
-			'wcfsl_bulk_invoice' => '1',
+			'irixfsl_bulk_invoice' => '1',
 			'order_ids'          => implode( ',', array_map( 'absint', $ids ) ),
-			'nonce'              => wp_create_nonce( 'wcfsl_bulk_invoice' ),
+			'nonce'              => wp_create_nonce( 'irixfsl_bulk_invoice' ),
 		], home_url( '/' ) );
-		return add_query_arg( [ 'wcfsl_bulk_invoice_redirect' => base64_encode( $url ) ], $redirect );
+		return add_query_arg( [ 'irixfsl_bulk_invoice_redirect' => base64_encode( $url ) ], $redirect );
 	}
 
 	public function handle_bulk_slips( string $redirect, string $action, array $ids ): string {
-		$url = WCFSL_Packing_Slip::packing_slip_url( $ids );
-		return add_query_arg( [ 'wcfsl_bulk_slip_redirect' => base64_encode( $url ) ], $redirect );
+		$url = IRIXFSL_Packing_Slip::packing_slip_url( $ids );
+		return add_query_arg( [ 'irixfsl_bulk_slip_redirect' => base64_encode( $url ) ], $redirect );
 	}
 
 	public function bulk_redirect_notice(): void {
-		foreach ( [ 'wcfsl_bulk_invoice_redirect', 'wcfsl_bulk_slip_redirect' ] as $param ) {
+		foreach ( [ 'irixfsl_bulk_invoice_redirect', 'irixfsl_bulk_slip_redirect' ] as $param ) {
 			if ( ! empty( $_GET[ $param ] ) ) { // phpcs:ignore
 				$raw = base64_decode( sanitize_text_field( wp_unslash( $_GET[ $param ] ) ) ); // phpcs:ignore
 				// wp_validate_redirect() ensures the URL stays on this site,
@@ -220,7 +220,7 @@ final class WCFSL_Admin {
 		$order_screens = [ 'edit-shop_order', 'shop_order', 'woocommerce_page_wc-orders' ];
 		if ( ! in_array( $screen->id, $order_screens, true ) ) return;
 
-		wp_enqueue_style( 'wcfsl-admin', WCFSL_URL . 'assets/css/admin.css', [], WCFSL_VERSION );
+		wp_enqueue_style( 'irixfsl-admin', IRIXFSL_URL . 'assets/css/admin.css', [], IRIXFSL_VERSION );
 
 		// On the single order edit screen, inject a guard that prevents saving
 		// to "Shipped" when no tracking/waybill number has been entered.
@@ -232,7 +232,7 @@ final class WCFSL_Admin {
 			if ( $current_order_id ) {
 				$current_order    = wc_get_order( $current_order_id );
 				if ( $current_order ) {
-					$fulfillment_type = WCFSL_Tracking::get_fulfillment_type( $current_order );
+					$fulfillment_type = IRIXFSL_Tracking::get_fulfillment_type( $current_order );
 				}
 			}
 
@@ -244,11 +244,11 @@ final class WCFSL_Admin {
 							var statusSel = $('select[name=\"order_status\"], select#order_status');
 							var status    = statusSel.val();
 							if ( status !== 'wc-shipped' ) return;
-							var trackingNum = $('#wcfsl_tracking_number').val();
+							var trackingNum = $('#irixfsl_tracking_number').val();
 							if ( ! trackingNum || ! trackingNum.trim() ) {
 								e.preventDefault();
 								e.stopImmediatePropagation();
-								alert( '" . esc_js( __( 'A waybill / tracking number is required before marking this order as Shipped. Please enter it in the Shipment Tracking box and try again.', 'wc-fulfillment-sl' ) ) . "' );
+								alert( '" . esc_js( __( 'A waybill / tracking number is required before marking this order as Shipped. Please enter it in the Shipment Tracking box and try again.', 'irix-fulfillment-sl' ) ) . "' );
 							}
 						});
 					})(jQuery);"
@@ -260,22 +260,22 @@ final class WCFSL_Admin {
 
 // ─── Bulk invoice print page ──────────────────────────────────────────────────
 add_action( 'template_redirect', function () {
-	if ( ! isset( $_GET['wcfsl_bulk_invoice'] ) ) return; // phpcs:ignore
-	if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( esc_html__( 'Unauthorized.', 'wc-fulfillment-sl' ) );
+	if ( ! isset( $_GET['irixfsl_bulk_invoice'] ) ) return; // phpcs:ignore
+	if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( esc_html__( 'Unauthorized.', 'irix-fulfillment-sl' ) );
 
 	$nonce = sanitize_text_field( $_GET['nonce'] ?? '' ); // phpcs:ignore
-	if ( ! wp_verify_nonce( $nonce, 'wcfsl_bulk_invoice' ) ) wp_die( esc_html__( 'Security check failed.', 'wc-fulfillment-sl' ) );
+	if ( ! wp_verify_nonce( $nonce, 'irixfsl_bulk_invoice' ) ) wp_die( esc_html__( 'Security check failed.', 'irix-fulfillment-sl' ) );
 
 	$ids    = array_filter( array_map( 'absint', explode( ',', sanitize_text_field( $_GET['order_ids'] ?? '' ) ) ) ); // phpcs:ignore
 	$orders = array_filter( array_map( 'wc_get_order', $ids ) );
 
-	if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'wc-fulfillment-sl' ) );
+	if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'irix-fulfillment-sl' ) );
 
-	$s         = WCFSL_Settings::get();
+	$s         = IRIXFSL_Settings::get();
 	$logo_url  = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
-	$print_url = WCFSL_URL . 'assets/css/print.css';
+	$print_url = IRIXFSL_URL . 'assets/css/print.css';
 	$bulk      = true;
 
-	include WCFSL_DIR . 'templates/invoice.php';
+	include IRIXFSL_DIR . 'templates/invoice.php';
 	exit;
 }, 5 );

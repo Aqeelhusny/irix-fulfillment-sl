@@ -1,10 +1,10 @@
-<?php
+﻿<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-final class WCFSL_Settings {
+final class IRIXFSL_Settings {
 
 	private static ?self $instance = null;
-	const OPTION_KEY = 'wcfsl_settings';
+	const OPTION_KEY = 'irixfsl_settings';
 
 	public static function instance(): self {
 		if ( null === self::$instance ) {
@@ -15,7 +15,7 @@ final class WCFSL_Settings {
 
 	private function __construct() {
 		add_action( 'admin_menu',             [ $this, 'register_menu' ] );
-		add_action( 'admin_post_wcfsl_save',  [ $this, 'handle_save' ] );
+		add_action( 'admin_post_irixfsl_save',  [ $this, 'handle_save' ] );
 		add_action( 'admin_enqueue_scripts',  [ $this, 'enqueue_assets' ] );
 		$this->maybe_fix_carrier_urls();
 	}
@@ -29,11 +29,11 @@ final class WCFSL_Settings {
 	 * Gated by an option flag so it only runs once and not on every admin load.
 	 */
 	private function maybe_fix_carrier_urls(): void {
-		if ( get_option( 'wcfsl_carrier_urls_migrated' ) ) return;
+		if ( get_option( 'irixfsl_carrier_urls_migrated' ) ) return;
 
 		$settings = (array) get_option( self::OPTION_KEY, [] );
 		if ( empty( $settings['carriers'] ) || ! is_array( $settings['carriers'] ) ) {
-			update_option( 'wcfsl_carrier_urls_migrated', '1' );
+			update_option( 'irixfsl_carrier_urls_migrated', '1' );
 			return;
 		}
 
@@ -63,7 +63,7 @@ final class WCFSL_Settings {
 			update_option( self::OPTION_KEY, $settings );
 		}
 
-		update_option( 'wcfsl_carrier_urls_migrated', '1' );
+		update_option( 'irixfsl_carrier_urls_migrated', '1' );
 	}
 
 	public static function get( string $key = '' ): mixed {
@@ -82,7 +82,7 @@ final class WCFSL_Settings {
 			'company_phone'           => '',
 			'company_email'           => get_bloginfo( 'admin_email' ),
 			'company_logo_id'         => 0,
-			'invoice_footer'          => __( 'Thank you for your business!', 'wc-fulfillment-sl' ),
+			'invoice_footer'          => __( 'Thank you for your business!', 'irix-fulfillment-sl' ),
 			'carriers'                => [
 				[ 'name' => 'Sri Lanka Post',   'url' => 'https://www.slpost.lk/track/{number}' ],
 				[ 'name' => 'DHL Sri Lanka',    'url' => 'https://www.dhl.com/lk-en/home/tracking.html?tracking-id={number}' ],
@@ -98,10 +98,10 @@ final class WCFSL_Settings {
 	public function register_menu(): void {
 		add_submenu_page(
 			'woocommerce',
-			__( 'Fulfillment SL', 'wc-fulfillment-sl' ),
-			__( 'Fulfillment SL', 'wc-fulfillment-sl' ),
+			__( 'Fulfillment SL', 'irix-fulfillment-sl' ),
+			__( 'Fulfillment SL', 'irix-fulfillment-sl' ),
 			'manage_woocommerce',
-			'wcfsl-settings',
+			'irixfsl-settings',
 			[ $this, 'render_page' ]
 		);
 	}
@@ -113,111 +113,111 @@ final class WCFSL_Settings {
 		$carriers = $s['carriers'] ?? [];
 		$logo_url = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
 		?>
-		<div class="wrap wcfsl-settings-wrap">
-			<h1><?php esc_html_e( 'WC Fulfillment SL — Settings', 'wc-fulfillment-sl' ); ?></h1>
+		<div class="wrap irixfsl-settings-wrap">
+			<h1><?php esc_html_e( 'IRIX Fulfillment SL — Settings', 'irix-fulfillment-sl' ); ?></h1>
 
 			<?php if ( isset( $_GET['updated'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
-				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'wc-fulfillment-sl' ); ?></p></div>
+				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'irix-fulfillment-sl' ); ?></p></div>
 			<?php endif; ?>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-				<?php wp_nonce_field( 'wcfsl_save', 'wcfsl_nonce' ); ?>
-				<input type="hidden" name="action" value="wcfsl_save">
+				<?php wp_nonce_field( 'irixfsl_save', 'irixfsl_nonce' ); ?>
+				<input type="hidden" name="action" value="irixfsl_save">
 
-				<h2><?php esc_html_e( 'Company Information', 'wc-fulfillment-sl' ); ?></h2>
+				<h2><?php esc_html_e( 'Company Information', 'irix-fulfillment-sl' ); ?></h2>
 				<table class="form-table">
 					<tr>
-						<th><?php esc_html_e( 'Company Logo', 'wc-fulfillment-sl' ); ?></th>
+						<th><?php esc_html_e( 'Company Logo', 'irix-fulfillment-sl' ); ?></th>
 						<td>
-							<div id="wcfsl-logo-wrap">
+							<div id="irixfsl-logo-wrap">
 								<?php if ( $logo_url ) : ?>
-									<img src="<?php echo esc_url( $logo_url ); ?>" id="wcfsl-logo-preview" style="max-height:80px;display:block;margin-bottom:8px;">
+									<img src="<?php echo esc_url( $logo_url ); ?>" id="irixfsl-logo-preview" style="max-height:80px;display:block;margin-bottom:8px;">
 								<?php else : ?>
-									<img src="" id="wcfsl-logo-preview" style="max-height:80px;display:none;margin-bottom:8px;">
+									<img src="" id="irixfsl-logo-preview" style="max-height:80px;display:none;margin-bottom:8px;">
 								<?php endif; ?>
 							</div>
-							<input type="hidden" name="wcfsl[company_logo_id]" id="wcfsl-logo-id" value="<?php echo esc_attr( $s['company_logo_id'] ); ?>">
-							<button type="button" class="button" id="wcfsl-logo-btn"><?php esc_html_e( 'Select Logo', 'wc-fulfillment-sl' ); ?></button>
-							<button type="button" class="button" id="wcfsl-logo-remove" <?php echo $s['company_logo_id'] ? '' : 'style="display:none"'; ?>><?php esc_html_e( 'Remove', 'wc-fulfillment-sl' ); ?></button>
+							<input type="hidden" name="irixfsl[company_logo_id]" id="irixfsl-logo-id" value="<?php echo esc_attr( $s['company_logo_id'] ); ?>">
+							<button type="button" class="button" id="irixfsl-logo-btn"><?php esc_html_e( 'Select Logo', 'irix-fulfillment-sl' ); ?></button>
+							<button type="button" class="button" id="irixfsl-logo-remove" <?php echo $s['company_logo_id'] ? '' : 'style="display:none"'; ?>><?php esc_html_e( 'Remove', 'irix-fulfillment-sl' ); ?></button>
 						</td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Company Name', 'wc-fulfillment-sl' ); ?></th>
-						<td><input type="text" name="wcfsl[company_name]" value="<?php echo esc_attr( $s['company_name'] ); ?>" class="regular-text"></td>
+						<th><?php esc_html_e( 'Company Name', 'irix-fulfillment-sl' ); ?></th>
+						<td><input type="text" name="irixfsl[company_name]" value="<?php echo esc_attr( $s['company_name'] ); ?>" class="regular-text"></td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Address', 'wc-fulfillment-sl' ); ?></th>
-						<td><textarea name="wcfsl[company_address]" rows="3" class="regular-text"><?php echo esc_textarea( $s['company_address'] ); ?></textarea></td>
+						<th><?php esc_html_e( 'Address', 'irix-fulfillment-sl' ); ?></th>
+						<td><textarea name="irixfsl[company_address]" rows="3" class="regular-text"><?php echo esc_textarea( $s['company_address'] ); ?></textarea></td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Phone', 'wc-fulfillment-sl' ); ?></th>
-						<td><input type="text" name="wcfsl[company_phone]" value="<?php echo esc_attr( $s['company_phone'] ); ?>" class="regular-text"></td>
+						<th><?php esc_html_e( 'Phone', 'irix-fulfillment-sl' ); ?></th>
+						<td><input type="text" name="irixfsl[company_phone]" value="<?php echo esc_attr( $s['company_phone'] ); ?>" class="regular-text"></td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Email', 'wc-fulfillment-sl' ); ?></th>
-						<td><input type="email" name="wcfsl[company_email]" value="<?php echo esc_attr( $s['company_email'] ); ?>" class="regular-text"></td>
+						<th><?php esc_html_e( 'Email', 'irix-fulfillment-sl' ); ?></th>
+						<td><input type="email" name="irixfsl[company_email]" value="<?php echo esc_attr( $s['company_email'] ); ?>" class="regular-text"></td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Invoice Footer Note', 'wc-fulfillment-sl' ); ?></th>
-						<td><input type="text" name="wcfsl[invoice_footer]" value="<?php echo esc_attr( $s['invoice_footer'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Thank you for your business!', 'wc-fulfillment-sl' ); ?>"></td>
+						<th><?php esc_html_e( 'Invoice Footer Note', 'irix-fulfillment-sl' ); ?></th>
+						<td><input type="text" name="irixfsl[invoice_footer]" value="<?php echo esc_attr( $s['invoice_footer'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Thank you for your business!', 'irix-fulfillment-sl' ); ?>"></td>
 					</tr>
 					<tr>
-						<th><?php esc_html_e( 'Waybill Scan URL', 'wc-fulfillment-sl' ); ?></th>
+						<th><?php esc_html_e( 'Waybill Scan URL', 'irix-fulfillment-sl' ); ?></th>
 						<td>
-							<input type="url" name="wcfsl[waybill_scan_url]" value="<?php echo esc_attr( $s['waybill_scan_url'] ); ?>" class="regular-text" placeholder="https://yourstore.com">
-							<p class="description"><?php esc_html_e( 'A QR code for this URL will be printed below every waybill. Leave blank to hide the QR code.', 'wc-fulfillment-sl' ); ?></p>
+							<input type="url" name="irixfsl[waybill_scan_url]" value="<?php echo esc_attr( $s['waybill_scan_url'] ); ?>" class="regular-text" placeholder="https://yourstore.com">
+							<p class="description"><?php esc_html_e( 'A QR code for this URL will be printed below every waybill. Leave blank to hide the QR code.', 'irix-fulfillment-sl' ); ?></p>
 						</td>
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Shipping Carriers', 'wc-fulfillment-sl' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Use {number} as placeholder for the tracking number in the URL.', 'wc-fulfillment-sl' ); ?></p>
+				<h2><?php esc_html_e( 'Shipping Carriers', 'irix-fulfillment-sl' ); ?></h2>
+				<p class="description"><?php esc_html_e( 'Use {number} as placeholder for the tracking number in the URL.', 'irix-fulfillment-sl' ); ?></p>
 
-				<table class="widefat wcfsl-carriers-table" id="wcfsl-carriers-table">
+				<table class="widefat irixfsl-carriers-table" id="irixfsl-carriers-table">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'Carrier Name', 'wc-fulfillment-sl' ); ?></th>
-							<th><?php esc_html_e( 'Tracking URL (use {number})', 'wc-fulfillment-sl' ); ?></th>
+							<th><?php esc_html_e( 'Carrier Name', 'irix-fulfillment-sl' ); ?></th>
+							<th><?php esc_html_e( 'Tracking URL (use {number})', 'irix-fulfillment-sl' ); ?></th>
 							<th></th>
 						</tr>
 					</thead>
 					<tbody>
 						<?php foreach ( $carriers as $i => $carrier ) : ?>
-						<tr class="wcfsl-carrier-row">
-							<td><input type="text" name="wcfsl[carriers][<?php echo $i; ?>][name]" value="<?php echo esc_attr( $carrier['name'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Sri Lanka Post', 'wc-fulfillment-sl' ); ?>"></td>
-							<td><input type="text" name="wcfsl[carriers][<?php echo $i; ?>][url]" value="<?php echo esc_attr( $carrier['url'] ); ?>" class="large-text" placeholder="https://track.example.com/{number}"></td>
-							<td><button type="button" class="button wcfsl-remove-carrier"><?php esc_html_e( 'Remove', 'wc-fulfillment-sl' ); ?></button></td>
+						<tr class="irixfsl-carrier-row">
+							<td><input type="text" name="irixfsl[carriers][<?php echo $i; ?>][name]" value="<?php echo esc_attr( $carrier['name'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Sri Lanka Post', 'irix-fulfillment-sl' ); ?>"></td>
+							<td><input type="text" name="irixfsl[carriers][<?php echo $i; ?>][url]" value="<?php echo esc_attr( $carrier['url'] ); ?>" class="large-text" placeholder="https://track.example.com/{number}"></td>
+							<td><button type="button" class="button irixfsl-remove-carrier"><?php esc_html_e( 'Remove', 'irix-fulfillment-sl' ); ?></button></td>
 						</tr>
 						<?php endforeach; ?>
 					</tbody>
 				</table>
-				<p><button type="button" class="button" id="wcfsl-add-carrier"><?php esc_html_e( '+ Add Carrier', 'wc-fulfillment-sl' ); ?></button></p>
+				<p><button type="button" class="button" id="irixfsl-add-carrier"><?php esc_html_e( '+ Add Carrier', 'irix-fulfillment-sl' ); ?></button></p>
 
-				<h2><?php esc_html_e( 'Fulfillment Exceptions', 'wc-fulfillment-sl' ); ?></h2>
+				<h2><?php esc_html_e( 'Fulfillment Exceptions', 'irix-fulfillment-sl' ); ?></h2>
 				<p class="description">
-					<?php esc_html_e( 'Store Pickup orders (WooCommerce built-in local pickup) are detected automatically — no tracking is required and no shipping email is sent.', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Store Pickup orders (WooCommerce built-in local pickup) are detected automatically — no tracking is required and no shipping email is sent.', 'irix-fulfillment-sl' ); ?>
 				</p>
 				<br>
-				<h3><?php esc_html_e( 'Local Delivery Method IDs', 'wc-fulfillment-sl' ); ?></h3>
+				<h3><?php esc_html_e( 'Local Delivery Method IDs', 'irix-fulfillment-sl' ); ?></h3>
 				<p class="description">
-					<?php esc_html_e( 'Enter the WooCommerce shipping method IDs used for your own in-house delivery service (one per line). Orders using these methods can be shipped without a tracking number, and customers will not receive an external tracking link.', 'wc-fulfillment-sl' ); ?>
+					<?php esc_html_e( 'Enter the WooCommerce shipping method IDs used for your own in-house delivery service (one per line). Orders using these methods can be shipped without a tracking number, and customers will not receive an external tracking link.', 'irix-fulfillment-sl' ); ?>
 					<br>
-					<em><?php esc_html_e( 'Example IDs: local_delivery, flat_rate, free_shipping. Find yours under WooCommerce → Settings → Shipping.', 'wc-fulfillment-sl' ); ?></em>
+					<em><?php esc_html_e( 'Example IDs: local_delivery, flat_rate, free_shipping. Find yours under WooCommerce → Settings → Shipping.', 'irix-fulfillment-sl' ); ?></em>
 				</p>
 				<table class="form-table">
 					<tr>
-						<th><?php esc_html_e( 'Local Delivery Methods', 'wc-fulfillment-sl' ); ?></th>
+						<th><?php esc_html_e( 'Local Delivery Methods', 'irix-fulfillment-sl' ); ?></th>
 						<td>
-							<textarea name="wcfsl[local_delivery_methods]" rows="4" class="regular-text" placeholder="local_delivery&#10;flat_rate"><?php
+							<textarea name="irixfsl[local_delivery_methods]" rows="4" class="regular-text" placeholder="local_delivery&#10;flat_rate"><?php
 								$ldm = $s['local_delivery_methods'] ?? [];
 								echo esc_textarea( implode( "\n", (array) $ldm ) );
 							?></textarea>
-							<p class="description"><?php esc_html_e( 'One method ID per line.', 'wc-fulfillment-sl' ); ?></p>
+							<p class="description"><?php esc_html_e( 'One method ID per line.', 'irix-fulfillment-sl' ); ?></p>
 						</td>
 					</tr>
 				</table>
 
-				<?php submit_button( __( 'Save Settings', 'wc-fulfillment-sl' ) ); ?>
+				<?php submit_button( __( 'Save Settings', 'irix-fulfillment-sl' ) ); ?>
 			</form>
 		</div>
 		<?php
@@ -225,11 +225,11 @@ final class WCFSL_Settings {
 
 	public function handle_save(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'Unauthorized.', 'wc-fulfillment-sl' ), 403 );
+			wp_die( esc_html__( 'Unauthorized.', 'irix-fulfillment-sl' ), 403 );
 		}
-		check_admin_referer( 'wcfsl_save', 'wcfsl_nonce' );
+		check_admin_referer( 'irixfsl_save', 'irixfsl_nonce' );
 
-		$raw  = isset( $_POST['wcfsl'] ) ? (array) $_POST['wcfsl'] : []; // phpcs:ignore
+		$raw  = isset( $_POST['irixfsl'] ) ? (array) $_POST['irixfsl'] : []; // phpcs:ignore
 		$data = [];
 
 		$data['company_name']    = sanitize_text_field( $raw['company_name'] ?? '' );
@@ -261,15 +261,15 @@ final class WCFSL_Settings {
 
 		update_option( self::OPTION_KEY, $data );
 
-		wp_safe_redirect( add_query_arg( [ 'page' => 'wcfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
+		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
 		exit;
 	}
 
 	public function enqueue_assets( string $hook ): void {
-		if ( $hook !== 'woocommerce_page_wcfsl-settings' ) return;
+		if ( $hook !== 'woocommerce_page_irixfsl-settings' ) return;
 
 		wp_enqueue_media();
-		wp_enqueue_script( 'wcfsl-admin', WCFSL_URL . 'assets/js/admin.js', [ 'jquery', 'media-upload' ], WCFSL_VERSION, true );
-		wp_enqueue_style( 'wcfsl-admin', WCFSL_URL . 'assets/css/admin.css', [], WCFSL_VERSION );
+		wp_enqueue_script( 'irixfsl-admin', IRIXFSL_URL . 'assets/js/admin.js', [ 'jquery', 'media-upload' ], IRIXFSL_VERSION, true );
+		wp_enqueue_style( 'irixfsl-admin', IRIXFSL_URL . 'assets/css/admin.css', [], IRIXFSL_VERSION );
 	}
 }
