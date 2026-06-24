@@ -355,13 +355,13 @@ body {
 	.waybill {
 		border: 1.5px solid #000;
 		margin: 0;
-		width: 94mm;
-		height: 144mm;
+		width: 96mm;
+		height: 146mm;
 		page-break-after: always;
 	}
 	@page {
 		size: 100mm 150mm;
-		margin: 3mm;
+		margin: 2mm;
 	}
 }
 </style>
