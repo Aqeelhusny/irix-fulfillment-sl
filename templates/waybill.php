@@ -102,9 +102,9 @@ body {
 	font-weight: 400;
 }
 .wb-addr-body {
-	font-size: 7.5px;
-	line-height: 1.55;
-	color: #222;
+	font-size: 9px;
+	line-height: 1.6;
+	color: #111;
 }
 .wb-phone-row {
 	display: flex;
@@ -113,16 +113,15 @@ body {
 	margin-top: 1.5mm;
 }
 .wb-phone {
-	font-size: 7.5px;
-	color: #222;
+	font-size: 9.5px;
+	font-weight: 700;
+	color: #000;
 	display: flex;
 	align-items: center;
 	gap: 1mm;
 }
 .wb-phone::before {
-	content: '✆';
-	font-size: 8px;
-	color: #555;
+	content: none;
 }
 .wb-city-tag {
 	font-size: 7.5px;
@@ -176,14 +175,14 @@ body {
 .wb-to-header strong { font-weight: 800; margin-right: 1mm; }
 .wb-to-header em { font-style: normal; color: #555; }
 .wb-to-name {
-	font-size: 11px;
+	font-size: 13px;
 	font-weight: 800;
 	line-height: 1.3;
 	color: #000;
 	margin-bottom: 1mm;
 }
 .wb-to-addr {
-	font-size: 8px;
+	font-size: 10px;
 	line-height: 1.6;
 	color: #222;
 }
@@ -191,16 +190,13 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 1mm;
-	font-size: 8.5px;
+	font-size: 12px;
 	font-weight: 700;
 	color: #000;
 	margin-top: 1.5mm;
 }
 .wb-to-phone::before {
-	content: '✆';
-	font-size: 9px;
-	color: #555;
-	font-weight: 400;
+	content: none;
 }
 
 /* ── 4. Product + Sender Account ──────────────────────── */
@@ -276,54 +272,26 @@ body {
 	font-weight: 700;
 	color: #111;
 }
+/* ── 5b. Meta box count display ───────────────────────── */
 .wb-meta-box {
-	border: 1px solid #ccc;
-	margin: 3mm 3mm;
-	border-radius: 1px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5mm;
 }
-
-/* ── 6. Reference ─────────────────────────────────────── */
-.wb-ref-row {
-	display: grid;
-	grid-template-columns: 34mm 1fr;
-	min-height: 16mm;
+.wb-meta-box-count {
+	font-size: 18px;
+	font-weight: 900;
+	color: #111;
+	line-height: 1;
 }
-.wb-ref-left {
-	padding: 2mm 3mm 1.5mm;
-	border-right: 1px solid #000;
-}
-.wb-ref-label {
-	font-size: 7px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: #2271b1;
-	margin-bottom: 1mm;
-}
-#wb-ref-canvas {
-	display: block;
-}
-.wb-ref-num {
-	font-family: 'Courier New', Courier, monospace;
+.wb-meta-box-label {
 	font-size: 6.5px;
 	font-weight: 700;
-	letter-spacing: 1px;
-	color: #111;
-	margin-top: 0.5mm;
-	text-align: center;
-}
-.wb-ref-right {
-	padding: 2mm 3mm;
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-}
-.wb-order-stamp {
-	font-size: 7.5px;
-	font-weight: 700;
-	color: #aaa;
 	text-transform: uppercase;
 	letter-spacing: 0.5px;
+	color: #888;
 }
 
 /* ── Print overrides ──────────────────────────────────── */
@@ -350,10 +318,16 @@ $ship_name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shippin
 if ( ! $ship_name ) {
 	$ship_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
 }
-$ship_addr = $order->get_formatted_shipping_address();
-if ( ! $ship_addr ) {
-	$ship_addr = $order->get_formatted_billing_address();
+
+// Build address without name fields to avoid the name appearing twice.
+$shipping_fields = $order->get_address( 'shipping' );
+if ( array_filter( array_intersect_key( $shipping_fields, array_flip( [ 'address_1', 'city', 'postcode', 'country' ] ) ) ) ) {
+	$addr_fields = $shipping_fields;
+} else {
+	$addr_fields = $order->get_address( 'billing' );
 }
+unset( $addr_fields['first_name'], $addr_fields['last_name'] );
+$ship_addr = WC()->countries->get_formatted_address( $addr_fields );
 $phone = $order->get_billing_phone();
 
 // Build product names list (max 4 items)
@@ -390,7 +364,6 @@ if ( count( $item_names ) > 4 ) {
 		<div class="wb-sender-col">
 			<div class="wb-acct-name">
 				<?php echo esc_html( $s['company_name'] ); ?>
-				<span style="color:#666;font-weight:400"> — #<?php echo esc_html( $order->get_order_number() ); ?></span>
 			</div>
 			<div class="wb-addr-labels">
 				Return Address <em>— Seller Address</em>
@@ -401,9 +374,6 @@ if ( count( $item_names ) > 4 ) {
 			<?php if ( $s['company_phone'] ) : ?>
 			<div class="wb-phone-row">
 				<div class="wb-phone"><?php echo esc_html( $s['company_phone'] ); ?></div>
-				<?php if ( $tracking['carrier'] ) : ?>
-					<div class="wb-city-tag"><?php echo esc_html( strtoupper( substr( $tracking['carrier'], 0, 3 ) ) ); ?></div>
-				<?php endif; ?>
 			</div>
 			<?php endif; ?>
 		</div>
@@ -445,10 +415,10 @@ if ( count( $item_names ) > 4 ) {
 	<!-- 4. Product names | Sender Account -->
 	<div class="wb-product-row">
 		<div class="wb-product-left">
-			<div class="wb-product-tag"><?php esc_html_e( 'Product', 'wc-fulfillment-sl' ); ?></div>
+			<div class="wb-product-tag"><?php esc_html_e( 'Order', 'wc-fulfillment-sl' ); ?></div>
 			<div class="wb-product-names">
-				<span class="wb-product-label"><?php esc_html_e( 'Product name', 'wc-fulfillment-sl' ); ?></span>
-				<?php echo nl2br( esc_html( $product_str ) ); ?>
+				<span class="wb-product-label"><?php esc_html_e( 'Order ID', 'wc-fulfillment-sl' ); ?></span>
+				#<?php echo esc_html( $order->get_order_number() ); ?>
 			</div>
 		</div>
 		<div class="wb-sender-acct">
@@ -473,19 +443,9 @@ if ( count( $item_names ) > 4 ) {
 				?>
 			</div>
 		</div>
-		<div class="wb-meta-box"></div>
-	</div>
-
-	<!-- 6. Reference -->
-	<div class="wb-ref-row">
-		<div class="wb-ref-left">
-			<div class="wb-ref-label"><?php esc_html_e( 'Reference', 'wc-fulfillment-sl' ); ?></div>
-			<canvas id="wb-ref-canvas"
-			        aria-label="<?php echo esc_attr( $order->get_order_number() ); ?>"></canvas>
-			<div class="wb-ref-num">#<?php echo esc_html( $order->get_order_number() ); ?></div>
-		</div>
-		<div class="wb-ref-right">
-			<span class="wb-order-stamp"><?php esc_html_e( 'Order', 'wc-fulfillment-sl' ); ?></span>
+		<div class="wb-meta-box">
+			<div class="wb-meta-box-count"><?php echo esc_html( $item_count ); ?></div>
+			<div class="wb-meta-box-label"><?php echo esc_html( _n( 'Item', 'Items', $item_count, 'wc-fulfillment-sl' ) ); ?></div>
 		</div>
 	</div>
 
@@ -495,7 +455,6 @@ if ( count( $item_names ) > 4 ) {
 <script>
 (function () {
 	var trackingNum = <?php echo wp_json_encode( $tracking['number'] ); ?>;
-	var orderRef    = <?php echo wp_json_encode( $order->get_order_number() ); ?>;
 
 	function renderBarcodes() {
 		if ( ! window.WCFSLBarcode ) return;
@@ -510,15 +469,6 @@ if ( count( $item_names ) > 4 ) {
 			} );
 		}
 
-		// Reference (order number) barcode — smaller
-		var refCanvas = document.getElementById('wb-ref-canvas');
-		if ( refCanvas && orderRef ) {
-			WCFSLBarcode.draw( refCanvas, orderRef, {
-				moduleWidth : 1.2,
-				height      : 28,
-				quiet       : 4
-			} );
-		}
 	}
 
 	if ( document.readyState === 'loading' ) {
