@@ -3,17 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Customer_Portal {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
+
 	const ENDPOINT_TRACK = 'track-order';
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'init',                               [ $this, 'add_endpoints' ] );
 		add_filter( 'query_vars',                         [ $this, 'add_query_vars' ] );
 		add_filter( 'woocommerce_account_menu_items',     [ $this, 'add_menu_item' ] );

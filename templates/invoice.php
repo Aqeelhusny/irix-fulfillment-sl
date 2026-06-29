@@ -87,6 +87,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 	$items      = $order->get_items();
 	$order_date = wc_format_datetime( $order->get_date_created() );
 	$tracking   = IRIXFSL_Tracking::get_tracking( $order );
+	$ship       = IRIXFSL_Helpers::get_ship_to( $order );
 
 	// ── Determine payment badge ───────────────────────────────────────
 	$payment_method = $order->get_payment_method();   // 'cod', 'bacs', 'paypal', …
@@ -167,29 +168,8 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 			<div class="address-box">
 				<h4><?php esc_html_e( 'Ship To', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
-					<?php
-					$has_shipping = $order->get_shipping_address_1();
-					$ship_name    = $order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name();
-					$ship_addr    = $has_shipping
-						? WC()->countries->get_formatted_address( [
-							'address_1' => $order->get_shipping_address_1(),
-							'address_2' => $order->get_shipping_address_2(),
-							'city'      => $order->get_shipping_city(),
-							'state'     => $order->get_shipping_state(),
-							'postcode'  => $order->get_shipping_postcode(),
-							'country'   => $order->get_shipping_country(),
-						] )
-						: WC()->countries->get_formatted_address( [
-							'address_1' => $order->get_billing_address_1(),
-							'address_2' => $order->get_billing_address_2(),
-							'city'      => $order->get_billing_city(),
-							'state'     => $order->get_billing_state(),
-							'postcode'  => $order->get_billing_postcode(),
-							'country'   => $order->get_billing_country(),
-						] );
-					?>
-					<strong><?php echo esc_html( $ship_name ); ?></strong><br>
-					<?php if ( $ship_addr ) echo wp_kses_post( $ship_addr ); ?>
+					<strong><?php echo esc_html( $ship['name'] ); ?></strong><br>
+					<?php if ( $ship['address'] ) echo wp_kses_post( $ship['address'] ); ?>
 				</address>
 			</div>
 			<?php if ( $tracking['carrier'] ) : ?>
@@ -229,16 +209,7 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 					<tr>
 						<td>
 							<?php echo esc_html( $item->get_name() ); ?>
-							<?php
-							$meta = $item->get_formatted_meta_data( '_', true );
-							if ( $meta ) :
-								echo '<div class="item-meta">';
-								foreach ( $meta as $m ) {
-									echo esc_html( $m->display_key ) . ': ' . wp_kses_post( $m->display_value ) . '<br>';
-								}
-								echo '</div>';
-							endif;
-							?>
+							<?php echo IRIXFSL_Helpers::render_item_meta( $item ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</td>
 						<td><?php echo esc_html( $sku ?: '—' ); ?></td>
 						<td class="text-right"><?php echo wp_kses_post( wc_price( $unit, [ 'currency' => $currency ] ) ); ?></td>
