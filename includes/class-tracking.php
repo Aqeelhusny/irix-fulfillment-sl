@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Tracking {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
 	/** Prevents double-save when both Classic and HPOS hooks fire in the same request. */
 	private static bool $tracking_saved = false;
@@ -13,14 +13,7 @@ final class IRIXFSL_Tracking {
 	const META_URL      = '_irixfsl_tracking_url';
 	const META_SENT     = '_irixfsl_tracking_email_sent';
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'add_meta_boxes',                      [ $this, 'add_meta_box' ] );
 		add_action( 'admin_enqueue_scripts',               [ $this, 'enqueue_assets' ] );
 		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'save_meta' ] );
@@ -70,10 +63,7 @@ final class IRIXFSL_Tracking {
 	}
 
 	public function render_meta_box( $post_or_order ): void {
-		$order = $post_or_order instanceof WC_Order
-			? $post_or_order
-			: wc_get_order( $post_or_order->ID );
-
+		$order = IRIXFSL_Helpers::resolve_order( $post_or_order );
 		if ( ! $order ) return;
 
 		$carrier          = $order->get_meta( self::META_CARRIER );
@@ -149,10 +139,7 @@ final class IRIXFSL_Tracking {
 		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
 
-		$order = $post_id_or_order instanceof WC_Order
-			? $post_id_or_order
-			: wc_get_order( $post_id_or_order );
-
+		$order = IRIXFSL_Helpers::resolve_order( $post_id_or_order );
 		if ( ! $order ) return;
 
 		self::$tracking_saved = true;

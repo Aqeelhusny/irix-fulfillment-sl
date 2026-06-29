@@ -3,17 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Settings {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
+
 	const OPTION_KEY = 'irixfsl_settings';
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'admin_menu',             [ $this, 'register_menu' ] );
 		add_action( 'admin_post_irixfsl_save', [ $this, 'handle_save' ] );
 		add_action( 'admin_enqueue_scripts',  [ $this, 'enqueue_assets' ] );

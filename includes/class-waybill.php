@@ -3,16 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Waybill {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'template_redirect', [ $this, 'maybe_render' ], 5 );
 	}
 
@@ -35,21 +28,16 @@ final class IRIXFSL_Waybill {
 			wp_die( esc_html__( 'Order not found.', 'irix-fulfillment-sl' ) );
 		}
 
-		$tracking = IRIXFSL_Tracking::get_tracking( $order );
-
-		// Waybill is available for Ready to Ship orders (no tracking number yet)
-		// and for any order that already has a tracking number saved.
-		$has_tracking  = ! empty( $tracking['number'] );
-		$is_ready      = $order->has_status( 'ready-to-ship' );
-
-		if ( ! $has_tracking && ! $is_ready ) {
+		if ( ! IRIXFSL_Helpers::is_waybill_available( $order ) ) {
 			wp_die( esc_html__( 'Waybill is only available once the order is marked Ready to Ship or a tracking number has been saved.', 'irix-fulfillment-sl' ) );
 		}
 
-		$s              = IRIXFSL_Settings::get();
-		$logo_url       = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
+		$ctx            = IRIXFSL_Helpers::get_document_context();
+		$s              = $ctx['settings'];
+		$logo_url       = $ctx['logo_url'];
+		$print_url      = $ctx['print_url'];
+		$tracking       = IRIXFSL_Tracking::get_tracking( $order );
 		$barcode_js_url = IRIXFSL_URL . 'assets/js/barcode.js';
-		$print_url      = IRIXFSL_URL . 'assets/css/print.css';
 		$scan_url       = $s['waybill_scan_url'] ?? '';
 
 		include IRIXFSL_DIR . 'templates/waybill.php';

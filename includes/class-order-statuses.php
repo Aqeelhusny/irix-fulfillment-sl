@@ -3,19 +3,12 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Order_Statuses {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
 	/** Prevents re-entry when we call update_status() to revert inside the hook. */
 	private static bool $reverting = false;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'init',                        [ $this, 'register_statuses' ] );
 		add_filter( 'wc_order_statuses',           [ $this, 'add_to_wc_statuses' ] );
 		add_filter( 'woocommerce_order_is_paid_statuses', [ $this, 'add_to_paid_statuses' ] );
