@@ -75,8 +75,11 @@ final class IRIXFSL_Order_Statuses {
 	}
 
 	public function add_to_paid_statuses( array $statuses ): array {
-		$statuses[] = 'ready-to-ship';
-		$statuses[] = 'shipped';
+		foreach ( [ 'ready-to-ship', 'shipped' ] as $slug ) {
+			if ( ! in_array( $slug, $statuses, true ) ) {
+				$statuses[] = $slug;
+			}
+		}
 		return $statuses;
 	}
 
@@ -175,7 +178,7 @@ final class IRIXFSL_Order_Statuses {
 		}
 		self::$reverting = false;
 
-		if ( ! $reverted ) {
+		if ( ! $reverted && ! isset( $e ) ) {
 			wc_get_logger()->error(
 				sprintf( 'Order #%d could not be reverted from Shipped — it may remain in an incorrect status.', $order_id ),
 				[ 'source' => 'irix-fulfillment-sl' ]

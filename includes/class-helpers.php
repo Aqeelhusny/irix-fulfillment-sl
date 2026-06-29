@@ -85,9 +85,14 @@ final class IRIXFSL_Helpers {
 				'country'   => $order->get_billing_country(),
 			];
 
+		$countries = WC()->countries;
+		$address   = $countries
+			? $countries->get_formatted_address( $fields )
+			: implode( ', ', array_filter( $fields ) );
+
 		return [
 			'name'    => $name ?: $order->get_formatted_billing_full_name(),
-			'address' => WC()->countries->get_formatted_address( $fields ),
+			'address' => $address,
 		];
 	}
 
