@@ -236,7 +236,7 @@ final class IRIXFSL_Settings {
 		}
 		check_admin_referer( 'irixfsl_save', 'irixfsl_nonce' );
 
-		$raw  = isset( $_POST['irixfsl'] ) ? (array) $_POST['irixfsl'] : []; // phpcs:ignore
+		$raw  = isset( $_POST['irixfsl'] ) ? (array) wp_unslash( $_POST['irixfsl'] ) : []; // phpcs:ignore
 		$data = [];
 
 		$data['company_name']    = sanitize_text_field( $raw['company_name'] ?? '' );
