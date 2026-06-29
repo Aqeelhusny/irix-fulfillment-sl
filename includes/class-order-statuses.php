@@ -126,8 +126,20 @@ final class IRIXFSL_Order_Statuses {
 				}
 			}
 
-			$order->update_status( $status, __( 'Status changed via bulk action.', 'irix-fulfillment-sl' ) );
-			$changed++;
+			try {
+				$result = $order->update_status( $status, __( 'Status changed via bulk action.', 'irix-fulfillment-sl' ) );
+				if ( $result ) {
+					$changed++;
+				} else {
+					$skipped++;
+				}
+			} catch ( \Exception $e ) {
+				wc_get_logger()->error(
+					sprintf( 'Bulk status change failed for order #%d: %s', $order->get_id(), $e->getMessage() ),
+					[ 'source' => 'irix-fulfillment-sl' ]
+				);
+				$skipped++;
+			}
 		}
 
 		$args = [ 'irixfsl_bulk_changed' => $changed ];
@@ -156,11 +168,26 @@ final class IRIXFSL_Order_Statuses {
 		if ( ! empty( $tracking['number'] ) ) return;
 
 		self::$reverting = true;
-		$order->update_status(
-			$from,
-			__( 'Reverted: a waybill / tracking number is required to mark this order as Shipped.', 'irix-fulfillment-sl' )
-		);
+		$reverted = false;
+		try {
+			$reverted = $order->update_status(
+				$from,
+				__( 'Reverted: a waybill / tracking number is required to mark this order as Shipped.', 'irix-fulfillment-sl' )
+			);
+		} catch ( \Exception $e ) {
+			wc_get_logger()->error(
+				sprintf( 'Failed to revert order #%d from Shipped to %s: %s', $order_id, $from, $e->getMessage() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 		self::$reverting = false;
+
+		if ( ! $reverted ) {
+			wc_get_logger()->error(
+				sprintf( 'Order #%d could not be reverted from Shipped — it may remain in an incorrect status.', $order_id ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 
 		set_transient( 'irixfsl_shipped_no_tracking_' . get_current_user_id(), $order_id, 60 );
 	}
