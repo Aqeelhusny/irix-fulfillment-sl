@@ -169,8 +169,8 @@ final class IRIXFSL_Tracking {
 	}
 
 	private function persist_tracking( WC_Order $order ): void {
-		$carrier = sanitize_text_field( $_POST['irixfsl_carrier'] ?? '' ); // phpcs:ignore
-		$number  = sanitize_text_field( $_POST['irixfsl_tracking_number'] ?? '' ); // phpcs:ignore
+		$carrier = sanitize_text_field( wp_unslash( $_POST['irixfsl_carrier'] ?? '' ) ); // phpcs:ignore
+		$number  = sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_number'] ?? '' ) ); // phpcs:ignore
 
 		// Use sanitize_text_field (not esc_url_raw) so the {number} placeholder
 		// survives long enough for us to substitute it below.

@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -521,7 +522,7 @@ if ( count( $item_names ) > 4 ) {
 </div><!-- .waybill -->
 
 <?php if ( ! empty( $scan_url ) ) : ?>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
 <?php endif; ?>
 <script src="<?php echo esc_url( $barcode_js_url ); ?>"></script>
 <script>
