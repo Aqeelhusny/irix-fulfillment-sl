@@ -197,12 +197,26 @@ final class IRIXFSL_Tracking {
 		$order->update_meta_data( self::META_CARRIER, $carrier );
 		$order->update_meta_data( self::META_NUMBER, $number );
 		$order->update_meta_data( self::META_URL, $url );
-		$order->save_meta_data();
+
+		try {
+			$order->save_meta_data();
+		} catch ( \Exception $e ) {
+			wc_get_logger()->error(
+				sprintf( 'Failed to save tracking meta for order #%d: %s', $order->get_id(), $e->getMessage() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 	}
 
 	public function maybe_send_tracking_email( int $order_id ): void {
 		$order = wc_get_order( $order_id );
-		if ( ! $order ) return;
+		if ( ! $order ) {
+			wc_get_logger()->warning(
+				sprintf( 'Tracking email skipped: order #%d not found.', $order_id ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+			return;
+		}
 
 		// Only send once — skip if already sent.
 		if ( $order->get_meta( self::META_SENT ) ) return;
@@ -219,7 +233,12 @@ final class IRIXFSL_Tracking {
 			if ( ! $number ) return;
 		}
 
-		$this->send_tracking_email( $order, $type );
+		if ( ! $this->send_tracking_email( $order, $type ) ) {
+			wc_get_logger()->error(
+				sprintf( 'Tracking email failed for order #%d (type: %s).', $order->get_id(), $type ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 	}
 
 	public function send_tracking_email( WC_Order $order, string $fulfillment_type = 'standard' ): bool {
@@ -242,6 +261,7 @@ final class IRIXFSL_Tracking {
 
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Unauthorized' );
+			return;
 		}
 
 		$order_id = absint( $_POST['order_id'] ?? 0 );
@@ -249,10 +269,15 @@ final class IRIXFSL_Tracking {
 
 		if ( ! $order ) {
 			wp_send_json_error( 'Order not found' );
+			return;
 		}
 
 		$sent = $this->send_tracking_email( $order );
-		$sent ? wp_send_json_success() : wp_send_json_error( 'Failed to send' );
+		if ( $sent ) {
+			wp_send_json_success();
+		} else {
+			wp_send_json_error( 'Failed to send tracking email.' );
+		}
 	}
 
 	public static function get_tracking( WC_Order $order ): array {
