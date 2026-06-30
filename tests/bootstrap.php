@@ -174,6 +174,17 @@ if ( ! function_exists( 'absint' ) ) {
     function absint( $val ): int { return abs( intval( $val ) ); }
 }
 
+if ( ! function_exists( 'wp_kses_post' ) ) {
+    function wp_kses_post( string $data ): string { return $data; }
+}
+
+if ( ! function_exists( 'wc_price' ) ) {
+    function wc_price( $price, array $args = [] ): string {
+        $currency = $args['currency'] ?? 'LKR';
+        return '<span class="woocommerce-Price-amount">' . number_format( (float) $price, 2 ) . ' ' . $currency . '</span>';
+    }
+}
+
 if ( ! function_exists( 'wp_unslash' ) ) {
     function wp_unslash( $value ) {
         return is_string( $value ) ? stripslashes( $value ) : $value;
@@ -443,6 +454,31 @@ if ( ! class_exists( 'WC_Order_Item_Shipping' ) ) {
 }
 
 /**
+ * Minimal WC_Order_Item_Product stub.
+ */
+if ( ! class_exists( 'WC_Order_Item_Product' ) ) {
+    class WC_Order_Item_Product {
+        private string $name;
+        private int $quantity;
+        private array $meta = [];
+
+        public function __construct( string $name = '', int $quantity = 1 ) {
+            $this->name     = $name;
+            $this->quantity = $quantity;
+        }
+
+        public function get_name(): string { return $this->name; }
+        public function get_quantity(): int { return $this->quantity; }
+
+        public function get_formatted_meta_data( string $hide_prefix = '_', bool $include_all = false ): array {
+            return $this->meta;
+        }
+
+        public function set_meta( array $meta ): void { $this->meta = $meta; }
+    }
+}
+
+/**
  * Minimal WC_Order stub that supports meta, status, and shipping methods.
  */
 if ( ! class_exists( 'WC_Order' ) ) {
@@ -456,6 +492,24 @@ if ( ! class_exists( 'WC_Order' ) ) {
         private string $currency = 'LKR';
         private ?WC_DateTime $date_created = null;
         private array $items = [];
+        private string $payment_method = '';
+        private string $billing_first_name = 'John';
+        private string $billing_last_name  = 'Doe';
+        private string $billing_address_1  = '123 Main St';
+        private string $billing_address_2  = '';
+        private string $billing_city       = 'Colombo';
+        private string $billing_state      = 'WP';
+        private string $billing_postcode   = '00100';
+        private string $billing_country    = 'LK';
+        private string $billing_phone      = '';
+        private string $shipping_first_name = '';
+        private string $shipping_last_name  = '';
+        private string $shipping_address_1  = '';
+        private string $shipping_address_2  = '';
+        private string $shipping_city       = '';
+        private string $shipping_state      = '';
+        private string $shipping_postcode   = '';
+        private string $shipping_country    = '';
 
         public function __construct( int $id = 0 ) {
             $this->id        = $id;
@@ -512,6 +566,36 @@ if ( ! class_exists( 'WC_Order' ) ) {
 
         public function get_items(): array { return $this->items; }
         public function set_items( array $items ): void { $this->items = $items; }
+
+        public function get_payment_method(): string { return $this->payment_method; }
+        public function set_payment_method( string $method ): void { $this->payment_method = $method; }
+
+        public function get_billing_first_name(): string { return $this->billing_first_name; }
+        public function get_billing_last_name(): string { return $this->billing_last_name; }
+        public function get_billing_address_1(): string { return $this->billing_address_1; }
+        public function get_billing_address_2(): string { return $this->billing_address_2; }
+        public function get_billing_city(): string { return $this->billing_city; }
+        public function get_billing_state(): string { return $this->billing_state; }
+        public function get_billing_postcode(): string { return $this->billing_postcode; }
+        public function get_billing_country(): string { return $this->billing_country; }
+        public function get_billing_phone(): string { return $this->billing_phone; }
+
+        public function get_shipping_first_name(): string { return $this->shipping_first_name; }
+        public function get_shipping_last_name(): string { return $this->shipping_last_name; }
+        public function get_shipping_address_1(): string { return $this->shipping_address_1; }
+        public function get_shipping_address_2(): string { return $this->shipping_address_2; }
+        public function get_shipping_city(): string { return $this->shipping_city; }
+        public function get_shipping_state(): string { return $this->shipping_state; }
+        public function get_shipping_postcode(): string { return $this->shipping_postcode; }
+        public function get_shipping_country(): string { return $this->shipping_country; }
+
+        public function get_formatted_billing_full_name(): string {
+            return trim( $this->billing_first_name . ' ' . $this->billing_last_name );
+        }
+
+        public function get_formatted_shipping_full_name(): string {
+            return trim( $this->shipping_first_name . ' ' . $this->shipping_last_name );
+        }
     }
 }
 
@@ -595,12 +679,33 @@ if ( ! function_exists( 'wc_get_logger' ) ) {
 }
 
 /**
- * Minimal WC() stub.
+ * Minimal WC_Countries stub.
  */
+if ( ! class_exists( 'WC_Countries' ) ) {
+    class WC_Countries {
+        public function get_formatted_address( array $args = [] ): string {
+            $parts = array_filter( [
+                $args['address_1'] ?? '',
+                $args['address_2'] ?? '',
+                $args['city'] ?? '',
+                $args['state'] ?? '',
+                $args['postcode'] ?? '',
+                $args['country'] ?? '',
+            ] );
+            return implode( ', ', $parts );
+        }
+    }
+}
+
 if ( ! class_exists( 'WooCommerce' ) ) {
     class WooCommerce {
         private static ?self $instance = null;
         private ?object $mailer_instance = null;
+        public ?WC_Countries $countries = null;
+
+        public function __construct() {
+            $this->countries = new WC_Countries();
+        }
 
         public static function instance(): self {
             if ( null === self::$instance ) self::$instance = new self();
@@ -629,6 +734,8 @@ if ( ! function_exists( 'WC' ) ) {
 
 // ── Load plugin classes ───────────────────────────────────────────────────
 
+require_once IRIXFSL_DIR . 'includes/trait-singleton.php';
+require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 require_once IRIXFSL_DIR . 'includes/class-settings.php';
 require_once IRIXFSL_DIR . 'includes/class-tracking.php';
 require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';

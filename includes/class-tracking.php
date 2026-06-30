@@ -230,17 +230,20 @@ final class IRIXFSL_Tracking {
 
 	public function send_tracking_email( WC_Order $order, string $fulfillment_type = 'standard' ): bool {
 		$emails = WC()->mailer()->get_emails();
-		if ( isset( $emails['IRIXFSL_Email_Tracking'] ) ) {
-			$emails['IRIXFSL_Email_Tracking']->trigger( $order->get_id(), $order, $fulfillment_type );
+		if ( ! isset( $emails['IRIXFSL_Email_Tracking'] ) ) {
+			wc_get_logger()->error(
+				sprintf( 'Tracking email class not found for order #%d', $order->get_id() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+			return false;
+		}
+
+		$sent = $emails['IRIXFSL_Email_Tracking']->trigger( $order->get_id(), $order, $fulfillment_type );
+		if ( $sent ) {
 			$order->update_meta_data( self::META_SENT, '1' );
 			$order->save_meta_data();
-			return true;
 		}
-		wc_get_logger()->error(
-			sprintf( 'Tracking email class not found for order #%d', $order->get_id() ),
-			[ 'source' => 'irix-fulfillment-sl' ]
-		);
-		return false;
+		return $sent;
 	}
 
 	public function ajax_resend(): void {
