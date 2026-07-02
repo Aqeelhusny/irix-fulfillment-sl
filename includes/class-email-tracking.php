@@ -28,7 +28,7 @@ class IRIXFSL_Email_Tracking extends WC_Email {
 		$this->template_base = IRIXFSL_DIR . 'templates/';
 	}
 
-	public function trigger( int $order_id, ?WC_Order $order = null, string $fulfillment_type = 'standard' ): void {
+	public function trigger( int $order_id, ?WC_Order $order = null, string $fulfillment_type = 'standard' ): bool {
 		$this->setup_locale();
 		$this->fulfillment_type = $fulfillment_type;
 
@@ -49,14 +49,20 @@ class IRIXFSL_Email_Tracking extends WC_Email {
 			$this->subject = __( 'Your {site_title} order #{order_number} is on its way', 'irix-fulfillment-sl' );
 		}
 
+		$sent = false;
 		if ( $this->is_enabled() && $this->get_recipient() ) {
-			$this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+			$sent = (bool) $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
 		}
 
 		$this->restore_locale();
+
+		return $sent;
 	}
 
 	public function get_content_html(): string {
+		// Guard against being called without an order (e.g. WC email preview).
+		if ( ! $this->object instanceof WC_Order ) return '';
+
 		return wc_get_template_html(
 			$this->template_html,
 			[

@@ -92,6 +92,10 @@ IRIXFSL();
 
 register_activation_hook( __FILE__, 'irixfsl_activate' );
 function irixfsl_activate(): void {
+	// The endpoint is normally registered on init, which has already run by the
+	// time activation fires — register it here so the flushed rules include it.
+	require_once IRIXFSL_DIR . 'includes/class-customer-portal.php';
+	add_rewrite_endpoint( IRIXFSL_Customer_Portal::ENDPOINT_TRACK, EP_PAGES );
 	flush_rewrite_rules();
 }
 

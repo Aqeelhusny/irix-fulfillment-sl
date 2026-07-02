@@ -99,14 +99,11 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 		// Cash on delivery — money collected at the door, not at checkout.
 		$badge_class = 'not-paid';
 		$badge_label = __( 'Not Paid', 'irix-fulfillment-sl' );
-	} elseif ( $payment_method === 'bacs' ) {
-		// Bank transfer — pending until admin confirms receipt (moves to processing).
-		$badge_class = ( $order_status === 'processing' ) ? 'paid' : 'pending';
-		$badge_label = ( $badge_class === 'paid' )
-			? __( 'Paid', 'irix-fulfillment-sl' )
-			: __( 'Pending Payment', 'irix-fulfillment-sl' );
 	} else {
-		// All other gateways (card, PayPal, etc.) — trust WooCommerce's is_paid().
+		// All other gateways (bank transfer, card, PayPal, etc.) — trust
+		// WooCommerce's is_paid(). BACS stays "Pending" while on-hold and
+		// becomes "Paid" once the admin confirms receipt, including after the
+		// order moves on to Ready to Ship / Shipped.
 		$badge_class = $order->is_paid() ? 'paid' : 'pending';
 		$badge_label = ( $badge_class === 'paid' )
 			? __( 'Paid', 'irix-fulfillment-sl' )
@@ -220,10 +217,11 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 					/** @var WC_Order_Item_Product $item */
 					$product  = $item->get_product();
 					$sku      = $product ? $product->get_sku() : '';
-					$qty      = $item->get_quantity();
-					$total    = $item->get_total();
-					$subtotal = $item->get_subtotal();
-					$unit     = $qty > 0 ? $subtotal / $qty : 0;
+					$qty   = $item->get_quantity();
+					$total = $item->get_total();
+					// Derive the unit price from the discounted line total so that
+					// unit × qty always equals the Total column, coupons included.
+					$unit  = $qty > 0 ? $total / $qty : 0;
 					?>
 					<tr>
 						<td>

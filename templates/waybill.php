@@ -392,11 +392,19 @@ $item_names  = [];
 foreach ( $items as $item ) {
 	$item_names[] = $item->get_name() . ' × ' . $item->get_quantity();
 }
-$item_count  = array_sum( array_column( iterator_to_array( $items ), 'quantity' ) );
 $item_count  = $order->get_item_count();
 $product_str = implode( "\n", array_slice( $item_names, 0, 4 ) );
 if ( count( $item_names ) > 4 ) {
 	$product_str .= "\n+ " . ( count( $item_names ) - 4 ) . ' more…';
+}
+
+// Total order weight from product weights (kg etc. per the store's weight unit).
+$order_weight = 0;
+foreach ( $items as $item ) {
+	$product = $item->get_product();
+	if ( $product && $product->get_weight() ) {
+		$order_weight += (float) $product->get_weight() * $item->get_quantity();
+	}
 }
 ?>
 
@@ -493,10 +501,7 @@ if ( count( $item_names ) > 4 ) {
 				<?php echo esc_html( $item_count . ' ' . _n( 'item', 'items', $item_count, 'irix-fulfillment-sl' ) ); ?>
 			</div>
 			<div><strong><?php esc_html_e( 'WEIGHT :', 'irix-fulfillment-sl' ); ?></strong>
-				<?php
-				$weight = $order->get_meta( '_order_weight' ) ?: '—';
-				echo esc_html( $weight );
-				?>
+				<?php echo esc_html( $order_weight > 0 ? wc_format_weight( $order_weight ) : '—' ); ?>
 			</div>
 		</div>
 		<div class="wb-meta-box">
@@ -521,7 +526,7 @@ if ( count( $item_names ) > 4 ) {
 </div><!-- .waybill -->
 
 <?php if ( ! empty( $scan_url ) ) : ?>
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="<?php echo esc_url( $qrcode_js_url ); ?>"></script>
 <?php endif; ?>
 <script src="<?php echo esc_url( $barcode_js_url ); ?>"></script>
 <script>

@@ -49,6 +49,7 @@ final class IRIXFSL_Waybill {
 		$s              = IRIXFSL_Settings::get();
 		$logo_url       = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
 		$barcode_js_url = IRIXFSL_URL . 'assets/js/barcode.js';
+		$qrcode_js_url  = IRIXFSL_URL . 'assets/js/qrcode.min.js';
 		$print_url      = IRIXFSL_URL . 'assets/css/print.css';
 		$scan_url       = $s['waybill_scan_url'] ?? '';
 

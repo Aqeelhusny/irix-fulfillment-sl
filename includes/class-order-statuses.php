@@ -78,6 +78,13 @@ final class IRIXFSL_Order_Statuses {
 				}
 			}
 		}
+		// Fallback: if another plugin removed/renamed wc-processing, append at the end.
+		if ( ! isset( $new['wc-ready-to-ship'] ) ) {
+			$new['wc-ready-to-ship'] = _x( 'Ready to Ship', 'Order status', 'irix-fulfillment-sl' );
+		}
+		if ( ! isset( $new['wc-shipped'] ) ) {
+			$new['wc-shipped'] = _x( 'Shipped', 'Order status', 'irix-fulfillment-sl' );
+		}
 		return $new;
 	}
 

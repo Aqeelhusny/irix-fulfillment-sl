@@ -225,10 +225,14 @@ final class IRIXFSL_Tracking {
 	public function send_tracking_email( WC_Order $order, string $fulfillment_type = 'standard' ): bool {
 		$emails = WC()->mailer()->get_emails();
 		if ( isset( $emails['IRIXFSL_Email_Tracking'] ) ) {
-			$emails['IRIXFSL_Email_Tracking']->trigger( $order->get_id(), $order, $fulfillment_type );
-			$order->update_meta_data( self::META_SENT, '1' );
-			$order->save_meta_data();
-			return true;
+			$sent = $emails['IRIXFSL_Email_Tracking']->trigger( $order->get_id(), $order, $fulfillment_type );
+			// Only record the flag when the email actually went out — trigger()
+			// returns false when the email is disabled or the order has no recipient.
+			if ( $sent ) {
+				$order->update_meta_data( self::META_SENT, '1' );
+				$order->save_meta_data();
+			}
+			return $sent;
 		}
 		wc_get_logger()->error(
 			sprintf( 'Tracking email class not found for order #%d', $order->get_id() ),
@@ -251,7 +255,7 @@ final class IRIXFSL_Tracking {
 			wp_send_json_error( 'Order not found' );
 		}
 
-		$sent = $this->send_tracking_email( $order );
+		$sent = $this->send_tracking_email( $order, self::get_fulfillment_type( $order ) );
 		$sent ? wp_send_json_success() : wp_send_json_error( 'Failed to send' );
 	}
 

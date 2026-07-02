@@ -206,7 +206,12 @@ final class IRIXFSL_Admin {
 				// preventing open-redirect abuse via a crafted base64 value.
 				$url = wp_validate_redirect( $raw, '' );
 				if ( $url ) {
-					echo '<script>window.open(' . wp_json_encode( $url ) . ', "_blank");</script>';
+					// Strip the redirect param from the address bar so refreshing
+					// the orders list doesn't reopen the print window.
+					echo '<script>window.open(' . wp_json_encode( $url ) . ', "_blank");'
+						. 'try{var u=new URL(window.location.href);'
+						. 'u.searchParams.delete(' . wp_json_encode( $param ) . ');'
+						. 'window.history.replaceState({},"",u.toString());}catch(e){}</script>';
 				}
 			}
 		}
@@ -264,7 +269,7 @@ final class IRIXFSL_Admin {
 				wp_add_inline_script(
 					'jquery',
 					"(function($){
-						$(document).on('click', '#publish, [name=\"save_order\"]', function(e){
+						$(document).on('click', '#publish, button.save_order, [name=\"save\"], [name=\"save_order\"]', function(e){
 							var statusSel = $('select[name=\"order_status\"], select#order_status');
 							var status    = statusSel.val();
 							if ( status !== 'wc-shipped' ) return;
