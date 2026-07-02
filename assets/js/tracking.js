@@ -22,12 +22,16 @@
 			action:   'irixfsl_resend_tracking',
 			order_id: btn.data('order'),
 			nonce:    btn.data('nonce'),
-		}, function (res) {
+		} )
+		.done( function (res) {
 			if ( res.success ) {
 				btn.text( i18n.sent || 'Email Sent!' );
 			} else {
 				btn.prop( 'disabled', false ).text( i18n.retry || 'Retry' );
 			}
+		} )
+		.fail( function () {
+			btn.prop( 'disabled', false ).text( i18n.retry || 'Retry' );
 		} );
 	} );
 })(jQuery);

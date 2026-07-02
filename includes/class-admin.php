@@ -3,16 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Admin {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_notices',         [ $this, 'bulk_redirect_notice' ] );
 		add_action( 'template_redirect',     [ $this, 'render_bulk_invoices' ], 5 );
@@ -53,9 +46,7 @@ final class IRIXFSL_Admin {
 	}
 
 	public function render_documents_meta_box( $post_or_order ): void {
-		$order = $post_or_order instanceof WC_Order
-			? $post_or_order
-			: wc_get_order( $post_or_order->ID );
+		$order = IRIXFSL_Helpers::resolve_order( $post_or_order );
 
 		if ( ! $order || ! $order->get_id() ) {
 			echo '<p class="irixfsl-doc-unsaved">'
@@ -66,10 +57,7 @@ final class IRIXFSL_Admin {
 
 		$invoice_url  = IRIXFSL_Invoice::invoice_url( $order->get_id() );
 		$slip_url     = IRIXFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
-		$tracking     = IRIXFSL_Tracking::get_tracking( $order );
-		$has_tracking = ! empty( $tracking['number'] );
-		$is_ready     = $order->has_status( 'ready-to-ship' );
-		$waybill_ok   = $has_tracking || $is_ready;
+		$waybill_ok   = IRIXFSL_Helpers::is_waybill_available( $order );
 		?>
 		<div class="irixfsl-doc-buttons">
 			<a href="<?php echo esc_url( $invoice_url ); ?>"
@@ -141,9 +129,7 @@ final class IRIXFSL_Admin {
 	private function render_document_links( WC_Order $order ): void {
 		$invoice_url  = IRIXFSL_Invoice::invoice_url( $order->get_id() );
 		$slip_url     = IRIXFSL_Packing_Slip::packing_slip_url( [ $order->get_id() ] );
-		$tracking     = IRIXFSL_Tracking::get_tracking( $order );
-		$has_tracking = ! empty( $tracking['number'] );
-		$waybill_ok   = $has_tracking || $order->has_status( 'ready-to-ship' );
+		$waybill_ok   = IRIXFSL_Helpers::is_waybill_available( $order );
 		?>
 		<div class="irixfsl-list-doc-links">
 			<a href="<?php echo esc_url( $invoice_url ); ?>"
@@ -231,9 +217,10 @@ final class IRIXFSL_Admin {
 
 		if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'irix-fulfillment-sl' ) );
 
-		$s         = IRIXFSL_Settings::get();
-		$logo_url  = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
-		$print_url = IRIXFSL_URL . 'assets/css/print.css';
+		$ctx       = IRIXFSL_Helpers::get_document_context();
+		$s         = $ctx['settings'];
+		$logo_url  = $ctx['logo_url'];
+		$print_url = $ctx['print_url'];
 		$bulk      = true;
 
 		include IRIXFSL_DIR . 'templates/invoice.php';

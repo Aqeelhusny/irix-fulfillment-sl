@@ -3,19 +3,12 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Order_Statuses {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
 	/** Prevents re-entry when we call update_status() to revert inside the hook. */
 	private static bool $reverting = false;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'init',                        [ $this, 'register_statuses' ] );
 		add_filter( 'wc_order_statuses',           [ $this, 'add_to_wc_statuses' ] );
 		add_filter( 'woocommerce_order_is_paid_statuses', [ $this, 'add_to_paid_statuses' ] );
@@ -89,8 +82,11 @@ final class IRIXFSL_Order_Statuses {
 	}
 
 	public function add_to_paid_statuses( array $statuses ): array {
-		$statuses[] = 'ready-to-ship';
-		$statuses[] = 'shipped';
+		foreach ( [ 'ready-to-ship', 'shipped' ] as $slug ) {
+			if ( ! in_array( $slug, $statuses, true ) ) {
+				$statuses[] = $slug;
+			}
+		}
 		return $statuses;
 	}
 
@@ -133,8 +129,20 @@ final class IRIXFSL_Order_Statuses {
 				}
 			}
 
-			$order->update_status( $status, __( 'Status changed via bulk action.', 'irix-fulfillment-sl' ) );
-			$changed++;
+			try {
+				$result = $order->update_status( $status, __( 'Status changed via bulk action.', 'irix-fulfillment-sl' ) );
+				if ( $result ) {
+					$changed++;
+				} else {
+					$skipped++;
+				}
+			} catch ( \Exception $e ) {
+				wc_get_logger()->error(
+					sprintf( 'Bulk status change failed for order #%d: %s', $order->get_id(), $e->getMessage() ),
+					[ 'source' => 'irix-fulfillment-sl' ]
+				);
+				$skipped++;
+			}
 		}
 
 		$args = [ 'irixfsl_bulk_changed' => $changed ];
@@ -163,11 +171,26 @@ final class IRIXFSL_Order_Statuses {
 		if ( ! empty( $tracking['number'] ) ) return;
 
 		self::$reverting = true;
-		$order->update_status(
-			$from,
-			__( 'Reverted: a waybill / tracking number is required to mark this order as Shipped.', 'irix-fulfillment-sl' )
-		);
+		$reverted = false;
+		try {
+			$reverted = $order->update_status(
+				$from,
+				__( 'Reverted: a waybill / tracking number is required to mark this order as Shipped.', 'irix-fulfillment-sl' )
+			);
+		} catch ( \Exception $e ) {
+			wc_get_logger()->error(
+				sprintf( 'Failed to revert order #%d from Shipped to %s: %s', $order_id, $from, $e->getMessage() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 		self::$reverting = false;
+
+		if ( ! $reverted && ! isset( $e ) ) {
+			wc_get_logger()->error(
+				sprintf( 'Order #%d could not be reverted from Shipped — it may remain in an incorrect status.', $order_id ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 
 		set_transient( 'irixfsl_shipped_no_tracking_' . get_current_user_id(), $order_id, 60 );
 	}

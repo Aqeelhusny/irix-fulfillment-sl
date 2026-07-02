@@ -3,16 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Packing_Slip {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'template_redirect', [ $this, 'maybe_render' ] );
 	}
 
@@ -32,9 +25,10 @@ final class IRIXFSL_Packing_Slip {
 
 		if ( empty( $orders ) ) wp_die( esc_html__( 'No valid orders found.', 'irix-fulfillment-sl' ) );
 
-		$s         = IRIXFSL_Settings::get();
-		$logo_url  = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
-		$print_url = IRIXFSL_URL . 'assets/css/print.css';
+		$ctx       = IRIXFSL_Helpers::get_document_context();
+		$s         = $ctx['settings'];
+		$logo_url  = $ctx['logo_url'];
+		$print_url = $ctx['print_url'];
 
 		include IRIXFSL_DIR . 'templates/packing-slip.php';
 		exit;

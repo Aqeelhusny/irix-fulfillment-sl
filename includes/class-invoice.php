@@ -3,16 +3,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Invoice {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'template_redirect', [ $this, 'maybe_render' ] );
 	}
 
@@ -45,11 +38,12 @@ final class IRIXFSL_Invoice {
 	}
 
 	public function render_invoice( WC_Order $order ): void {
-		$s          = IRIXFSL_Settings::get();
+		$ctx        = IRIXFSL_Helpers::get_document_context();
+		$s          = $ctx['settings'];
+		$logo_url   = $ctx['logo_url'];
+		$print_url  = $ctx['print_url'];
 		$currency   = $order->get_currency();
-		$logo_url   = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
 		$items      = $order->get_items();
-		$print_url  = IRIXFSL_URL . 'assets/css/print.css';
 
 		include IRIXFSL_DIR . 'templates/invoice.php';
 	}

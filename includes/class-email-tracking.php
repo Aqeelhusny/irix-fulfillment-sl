@@ -36,12 +36,19 @@ class IRIXFSL_Email_Tracking extends WC_Email {
 			$order = wc_get_order( $order_id );
 		}
 
-		if ( is_a( $order, 'WC_Order' ) ) {
-			$this->object    = $order;
-			$this->recipient = $order->get_billing_email();
-			$this->placeholders['{order_number}'] = $order->get_order_number();
-			$this->placeholders['{order_date}']   = wc_format_datetime( $order->get_date_created() );
+		if ( ! is_a( $order, 'WC_Order' ) ) {
+			wc_get_logger()->error(
+				sprintf( 'Tracking email trigger failed: invalid order (ID %d).', $order_id ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+			$this->restore_locale();
+			return false;
 		}
+
+		$this->object    = $order;
+		$this->recipient = $order->get_billing_email();
+		$this->placeholders['{order_number}'] = $order->get_order_number();
+		$this->placeholders['{order_date}']   = wc_format_datetime( $order->get_date_created() );
 
 		// Adjust subject and heading for local delivery.
 		if ( $fulfillment_type === 'local_delivery' ) {

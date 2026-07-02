@@ -1,3 +1,4 @@
+<?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
@@ -55,22 +56,8 @@
 <?php foreach ( $orders as $order ) :
 	$items    = $order->get_items();
 	$tracking = IRIXFSL_Tracking::get_tracking( $order );
-	$has_ship = $order->get_shipping_address_1();
-	$ship_to  = WC()->countries->get_formatted_address( $has_ship ? [
-		'address_1' => $order->get_shipping_address_1(),
-		'address_2' => $order->get_shipping_address_2(),
-		'city'      => $order->get_shipping_city(),
-		'state'     => $order->get_shipping_state(),
-		'postcode'  => $order->get_shipping_postcode(),
-		'country'   => $order->get_shipping_country(),
-	] : [
-		'address_1' => $order->get_billing_address_1(),
-		'address_2' => $order->get_billing_address_2(),
-		'city'      => $order->get_billing_city(),
-		'state'     => $order->get_billing_state(),
-		'postcode'  => $order->get_billing_postcode(),
-		'country'   => $order->get_billing_country(),
-	] );
+	$ship     = IRIXFSL_Helpers::get_ship_to( $order );
+	$ship_to  = $ship['address'];
 	?>
 	<div class="irixfsl-doc">
 		<div class="doc-header">
@@ -99,7 +86,7 @@
 			<div class="address-box">
 				<h4><?php esc_html_e( 'Ship To', 'irix-fulfillment-sl' ); ?></h4>
 				<address>
-					<strong><?php echo esc_html( $order->get_formatted_shipping_full_name() ?: $order->get_formatted_billing_full_name() ); ?></strong><br>
+					<strong><?php echo esc_html( $ship['name'] ); ?></strong><br>
 					<?php echo wp_kses_post( $ship_to ); ?>
 					<?php if ( $order->get_billing_phone() ) echo '<br>' . esc_html( $order->get_billing_phone() ); ?>
 				</address>
@@ -130,16 +117,7 @@
 					<tr>
 						<td>
 							<?php echo esc_html( $item->get_name() ); ?>
-							<?php
-							$meta = $item->get_formatted_meta_data( '_', true );
-							if ( $meta ) :
-								echo '<div class="item-meta">';
-								foreach ( $meta as $m ) {
-									echo esc_html( $m->display_key ) . ': ' . wp_kses_post( $m->display_value ) . '<br>';
-								}
-								echo '</div>';
-							endif;
-							?>
+							<?php echo IRIXFSL_Helpers::render_item_meta( $item ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</td>
 						<td><?php echo esc_html( $sku ?: '—' ); ?></td>
 						<td class="text-right"><?php echo esc_html( $item->get_quantity() ); ?></td>

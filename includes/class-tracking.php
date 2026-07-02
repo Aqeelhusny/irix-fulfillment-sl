@@ -3,7 +3,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 final class IRIXFSL_Tracking {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
 	/** Prevents double-save when both Classic and HPOS hooks fire in the same request. */
 	private static bool $tracking_saved = false;
@@ -13,14 +13,7 @@ final class IRIXFSL_Tracking {
 	const META_URL      = '_irixfsl_tracking_url';
 	const META_SENT     = '_irixfsl_tracking_email_sent';
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'add_meta_boxes',                      [ $this, 'add_meta_box' ] );
 		add_action( 'admin_enqueue_scripts',               [ $this, 'enqueue_assets' ] );
 		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'save_meta' ] );
@@ -70,10 +63,7 @@ final class IRIXFSL_Tracking {
 	}
 
 	public function render_meta_box( $post_or_order ): void {
-		$order = $post_or_order instanceof WC_Order
-			? $post_or_order
-			: wc_get_order( $post_or_order->ID );
-
+		$order = IRIXFSL_Helpers::resolve_order( $post_or_order );
 		if ( ! $order ) return;
 
 		$carrier          = $order->get_meta( self::META_CARRIER );
@@ -149,10 +139,7 @@ final class IRIXFSL_Tracking {
 		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
 
-		$order = $post_id_or_order instanceof WC_Order
-			? $post_id_or_order
-			: wc_get_order( $post_id_or_order );
-
+		$order = IRIXFSL_Helpers::resolve_order( $post_id_or_order );
 		if ( ! $order ) return;
 
 		self::$tracking_saved = true;
@@ -169,8 +156,8 @@ final class IRIXFSL_Tracking {
 	}
 
 	private function persist_tracking( WC_Order $order ): void {
-		$carrier = sanitize_text_field( $_POST['irixfsl_carrier'] ?? '' ); // phpcs:ignore
-		$number  = sanitize_text_field( $_POST['irixfsl_tracking_number'] ?? '' ); // phpcs:ignore
+		$carrier = sanitize_text_field( wp_unslash( $_POST['irixfsl_carrier'] ?? '' ) ); // phpcs:ignore
+		$number  = sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_number'] ?? '' ) ); // phpcs:ignore
 
 		// Use sanitize_text_field (not esc_url_raw) so the {number} placeholder
 		// survives long enough for us to substitute it below.
@@ -197,12 +184,26 @@ final class IRIXFSL_Tracking {
 		$order->update_meta_data( self::META_CARRIER, $carrier );
 		$order->update_meta_data( self::META_NUMBER, $number );
 		$order->update_meta_data( self::META_URL, $url );
-		$order->save_meta_data();
+
+		try {
+			$order->save_meta_data();
+		} catch ( \Exception $e ) {
+			wc_get_logger()->error(
+				sprintf( 'Failed to save tracking meta for order #%d: %s', $order->get_id(), $e->getMessage() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 	}
 
 	public function maybe_send_tracking_email( int $order_id ): void {
 		$order = wc_get_order( $order_id );
-		if ( ! $order ) return;
+		if ( ! $order ) {
+			wc_get_logger()->warning(
+				sprintf( 'Tracking email skipped: order #%d not found.', $order_id ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+			return;
+		}
 
 		// Only send once — skip if already sent.
 		if ( $order->get_meta( self::META_SENT ) ) return;
@@ -219,7 +220,12 @@ final class IRIXFSL_Tracking {
 			if ( ! $number ) return;
 		}
 
-		$this->send_tracking_email( $order, $type );
+		if ( ! $this->send_tracking_email( $order, $type ) ) {
+			wc_get_logger()->error(
+				sprintf( 'Tracking email failed for order #%d (type: %s).', $order->get_id(), $type ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
 	}
 
 	public function send_tracking_email( WC_Order $order, string $fulfillment_type = 'standard' ): bool {
@@ -234,11 +240,7 @@ final class IRIXFSL_Tracking {
 			}
 			return $sent;
 		}
-		wc_get_logger()->error(
-			sprintf( 'Tracking email class not found for order #%d', $order->get_id() ),
-			[ 'source' => 'irix-fulfillment-sl' ]
-		);
-		return false;
+		return $sent;
 	}
 
 	public function ajax_resend(): void {
@@ -246,6 +248,7 @@ final class IRIXFSL_Tracking {
 
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			wp_send_json_error( 'Unauthorized' );
+			return;
 		}
 
 		$order_id = absint( $_POST['order_id'] ?? 0 );
@@ -253,6 +256,7 @@ final class IRIXFSL_Tracking {
 
 		if ( ! $order ) {
 			wp_send_json_error( 'Order not found' );
+			return;
 		}
 
 		$sent = $this->send_tracking_email( $order, self::get_fulfillment_type( $order ) );

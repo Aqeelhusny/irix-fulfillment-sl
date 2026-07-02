@@ -21,6 +21,8 @@ define( 'IRIXFSL_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'IRIXFSL_URL',        plugin_dir_url( __FILE__ ) );
 define( 'IRIXFSL_PLUGIN_FILE', __FILE__ );
 
+require_once IRIXFSL_DIR . 'includes/trait-singleton.php';
+
 add_action( 'before_woocommerce_init', function () {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
@@ -29,16 +31,9 @@ add_action( 'before_woocommerce_init', function () {
 
 final class WC_Fulfillment_SL {
 
-	private static ?self $instance = null;
+	use IRIXFSL_Singleton;
 
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
-
-	private function __construct() {
+	protected function boot(): void {
 		add_action( 'plugins_loaded', [ $this, 'init' ] );
 	}
 
@@ -50,6 +45,7 @@ final class WC_Fulfillment_SL {
 
 		load_plugin_textdomain( 'irix-fulfillment-sl', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 
+		require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 		require_once IRIXFSL_DIR . 'includes/class-settings.php';
 		require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';
 		require_once IRIXFSL_DIR . 'includes/class-tracking.php';
