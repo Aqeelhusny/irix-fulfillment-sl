@@ -126,6 +126,11 @@ final class IRIXFSL_Tracking {
 			<button type="button" class="button button-secondary" id="irixfsl-resend-tracking" data-order="<?php echo esc_attr( $order->get_id() ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'irixfsl_resend_tracking' ) ); ?>">
 				<?php $sent ? esc_html_e( 'Resend Tracking Email', 'irix-fulfillment-sl' ) : esc_html_e( 'Send Tracking Email', 'irix-fulfillment-sl' ); ?>
 			</button>
+			<?php if ( $url ) : ?>
+				<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer" class="button button-secondary" id="irixfsl-check-tracking">
+					<?php esc_html_e( 'Check Tracking', 'irix-fulfillment-sl' ); ?>
+				</a>
+			<?php endif; ?>
 			<?php if ( $sent ) : ?>
 				<span style="color:#1a7a2a;margin-left:6px">&#10003; <?php esc_html_e( 'Email sent', 'irix-fulfillment-sl' ); ?></span>
 			<?php endif; ?>
@@ -240,7 +245,7 @@ final class IRIXFSL_Tracking {
 			}
 			return $sent;
 		}
-		return $sent;
+		return false;
 	}
 
 	public function ajax_resend(): void {
