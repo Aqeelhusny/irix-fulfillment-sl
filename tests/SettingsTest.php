@@ -10,8 +10,9 @@ final class SettingsTest extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		IRIXFSL_Settings::flush_cache();
-		global $_irixfsl_test_options;
-		$_irixfsl_test_options = [];
+		global $_irixfsl_test_options, $_irixfsl_test_shipping_methods;
+		$_irixfsl_test_options          = [];
+		$_irixfsl_test_shipping_methods = [];
 	}
 
 	// ── defaults() ──────────────────────────────────────────────────────
@@ -232,14 +233,146 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( '1', $_irixfsl_test_options['irixfsl_carrier_urls_migrated'] );
 	}
 
+	// ── Local delivery methods migration (maybe_migrate_local_delivery_methods) ──
+
+	public function test_ldm_migration_skipped_when_flag_already_set(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options['irixfsl_local_delivery_methods_migrated'] = '1';
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'local_delivery_methods' => [ 'local_delivery', 'flat_rate' ],
+		];
+
+		$instance = IRIXFSL_Settings::instance();
+		$instance->maybe_migrate_local_delivery_methods();
+
+		// Should remain in the old flat-string format because migration was skipped.
+		$this->assertSame(
+			[ 'local_delivery', 'flat_rate' ],
+			$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ]['local_delivery_methods']
+		);
+	}
+
+	public function test_ldm_migration_wraps_old_flat_string_format_into_rows(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'local_delivery_methods' => [ 'local_delivery', 'flat_rate' ],
+		];
+
+		IRIXFSL_Settings::flush_cache();
+		$instance = IRIXFSL_Settings::instance();
+		$instance->maybe_migrate_local_delivery_methods();
+
+		$migrated = $_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ]['local_delivery_methods'];
+		$this->assertSame(
+			[
+				[ 'name' => 'local_delivery', 'method_id' => 'local_delivery', 'fee' => '' ],
+				[ 'name' => 'flat_rate', 'method_id' => 'flat_rate', 'fee' => '' ],
+			],
+			$migrated
+		);
+		$this->assertSame( '1', $_irixfsl_test_options['irixfsl_local_delivery_methods_migrated'] );
+	}
+
+	public function test_ldm_migration_leaves_new_row_format_untouched(): void {
+		global $_irixfsl_test_options;
+		$rows = [ [ 'name' => 'XYZ Courier', 'method_id' => 'local_delivery', 'fee' => '350' ] ];
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'local_delivery_methods' => $rows,
+		];
+
+		IRIXFSL_Settings::flush_cache();
+		$instance = IRIXFSL_Settings::instance();
+		$instance->maybe_migrate_local_delivery_methods();
+
+		$this->assertSame( $rows, $_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ]['local_delivery_methods'] );
+	}
+
+	public function test_ldm_migration_sets_flag_when_empty(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [];
+
+		$instance = IRIXFSL_Settings::instance();
+		$instance->maybe_migrate_local_delivery_methods();
+
+		$this->assertSame( '1', $_irixfsl_test_options['irixfsl_local_delivery_methods_migrated'] );
+	}
+
+	// ── sanitize_local_delivery_methods() ───────────────────────────────
+
+	public function test_sanitize_local_delivery_methods_drops_rows_with_blank_method_id(): void {
+		$result = IRIXFSL_Settings::sanitize_local_delivery_methods( [
+			[ 'name' => 'No ID here', 'method_id' => '', 'fee' => '100' ],
+			[ 'name' => 'XYZ Courier', 'method_id' => 'local_delivery', 'fee' => '350' ],
+		] );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'local_delivery', $result[0]['method_id'] );
+	}
+
+	public function test_sanitize_local_delivery_methods_dedupes_by_method_id_last_wins(): void {
+		$result = IRIXFSL_Settings::sanitize_local_delivery_methods( [
+			[ 'name' => 'First Name', 'method_id' => 'local_delivery', 'fee' => '100' ],
+			[ 'name' => 'Second Name', 'method_id' => 'local_delivery', 'fee' => '200' ],
+		] );
+
+		$this->assertCount( 1, $result );
+		$this->assertSame( 'Second Name', $result[0]['name'] );
+		$this->assertSame( '200', $result[0]['fee'] );
+	}
+
+	public function test_sanitize_local_delivery_methods_allows_any_name(): void {
+		$result = IRIXFSL_Settings::sanitize_local_delivery_methods( [
+			[ 'name' => 'Grandma\'s Bike Courier & Sons', 'method_id' => 'grandma_courier', 'fee' => '' ],
+		] );
+
+		$this->assertSame( "Grandma's Bike Courier & Sons", $result[0]['name'] );
+	}
+
+	public function test_sanitize_local_delivery_methods_clamps_negative_fee_and_blanks_non_numeric(): void {
+		$result = IRIXFSL_Settings::sanitize_local_delivery_methods( [
+			[ 'name' => 'Rider', 'method_id' => 'rider', 'fee' => '-50' ],
+			[ 'name' => 'Other Rider', 'method_id' => 'other_rider', 'fee' => 'abc' ],
+		] );
+
+		$this->assertSame( '0', $result[0]['fee'] );
+		$this->assertSame( '', $result[1]['fee'] );
+	}
+
+	// ── get_registered_shipping_methods() ───────────────────────────────
+
+	public function test_get_registered_shipping_methods_returns_id_title_map(): void {
+		global $_irixfsl_test_shipping_methods;
+		$_irixfsl_test_shipping_methods = [
+			new \WC_Shipping_Method_Stub( 'flat_rate', 'Flat rate' ),
+			new \WC_Shipping_Method_Stub( 'local_pickup', 'Local pickup' ),
+		];
+
+		$result = IRIXFSL_Settings::get_registered_shipping_methods();
+
+		$this->assertSame( [
+			'flat_rate'    => 'Flat rate',
+			'local_pickup' => 'Local pickup',
+		], $result );
+	}
+
+	public function test_get_registered_shipping_methods_returns_empty_array_when_none_registered(): void {
+		$this->assertSame( [], IRIXFSL_Settings::get_registered_shipping_methods() );
+	}
+
 	// ── prepare_data_for_save() (POST → sanitized array wiring) ─────────
 
 	public function test_prepare_data_for_save_wires_local_delivery_methods(): void {
 		$data = IRIXFSL_Settings::prepare_data_for_save( [
-			'local_delivery_methods' => "local_delivery\nflat_rate\n\n",
+			'local_delivery_methods' => [
+				[ 'name' => 'XYZ Courier', 'method_id' => 'local_delivery', 'fee' => '350' ],
+				[ 'name' => '', 'method_id' => '', 'fee' => '' ],
+			],
 		] );
 
-		$this->assertSame( [ 'local_delivery', 'flat_rate' ], $data['local_delivery_methods'] );
+		$this->assertCount( 1, $data['local_delivery_methods'] );
+		$this->assertSame( 'XYZ Courier', $data['local_delivery_methods'][0]['name'] );
+		$this->assertSame( 'local_delivery', $data['local_delivery_methods'][0]['method_id'] );
+		$this->assertSame( '350', $data['local_delivery_methods'][0]['fee'] );
 	}
 
 	public function test_prepare_data_for_save_defaults_local_delivery_methods_to_empty_array_when_absent(): void {

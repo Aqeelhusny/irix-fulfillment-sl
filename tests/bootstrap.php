@@ -487,6 +487,30 @@ if ( ! class_exists( 'WC_Order_Item_Product' ) ) {
 }
 
 /**
+ * Minimal WC_Order_Item_Fee stub.
+ */
+if ( ! class_exists( 'WC_Order_Item_Fee' ) ) {
+    class WC_Order_Item_Fee {
+        private string $name = '';
+        private string $amount = '';
+        private string $total = '';
+        private string $tax_status = '';
+
+        public function set_name( string $name ): void { $this->name = $name; }
+        public function get_name(): string { return $this->name; }
+
+        public function set_amount( string $amount ): void { $this->amount = $amount; }
+        public function get_amount(): string { return $this->amount; }
+
+        public function set_total( string $total ): void { $this->total = $total; }
+        public function get_total(): string { return $this->total; }
+
+        public function set_tax_status( string $status ): void { $this->tax_status = $status; }
+        public function get_tax_status(): string { return $this->tax_status; }
+    }
+}
+
+/**
  * Minimal WC_Order stub that supports meta, status, and shipping methods.
  */
 if ( ! class_exists( 'WC_Order' ) ) {
@@ -618,6 +642,24 @@ if ( ! class_exists( 'WC_Order' ) ) {
 
         /** Test-only helper — not part of the real WC_Order API. */
         public function get_notes(): array { return $this->notes; }
+
+        private int $save_call_count = 0;
+        private bool $calculate_totals_called = false;
+
+        public function add_item( $item ): void { $this->items[] = $item; }
+
+        public function calculate_totals( bool $and_taxes = true ): void {
+            $this->calculate_totals_called = true;
+        }
+
+        public function save() {
+            $this->save_call_count++;
+            return $this->id;
+        }
+
+        /** Test-only helpers — not part of the real WC_Order API. */
+        public function get_save_call_count(): int { return $this->save_call_count; }
+        public function was_calculate_totals_called(): bool { return $this->calculate_totals_called; }
     }
 }
 
@@ -719,10 +761,38 @@ if ( ! class_exists( 'WC_Countries' ) ) {
     }
 }
 
+/**
+ * Minimal stand-in for a registered WC_Shipping_Method type (e.g. flat_rate,
+ * local_pickup) as returned by WC()->shipping()->get_shipping_methods().
+ */
+if ( ! class_exists( 'WC_Shipping_Method_Stub' ) ) {
+    class WC_Shipping_Method_Stub {
+        public string $id;
+        public string $method_title;
+
+        public function __construct( string $id, string $method_title ) {
+            $this->id           = $id;
+            $this->method_title = $method_title;
+        }
+
+        public function get_method_title(): string { return $this->method_title; }
+    }
+}
+
+if ( ! class_exists( 'WC_Shipping' ) ) {
+    class WC_Shipping {
+        public function get_shipping_methods(): array {
+            global $_irixfsl_test_shipping_methods;
+            return $_irixfsl_test_shipping_methods ?? [];
+        }
+    }
+}
+
 if ( ! class_exists( 'WooCommerce' ) ) {
     class WooCommerce {
         private static ?self $instance = null;
         private ?object $mailer_instance = null;
+        private ?WC_Shipping $shipping_instance = null;
         public ?WC_Countries $countries = null;
 
         public function __construct() {
@@ -744,6 +814,11 @@ if ( ! class_exists( 'WooCommerce' ) ) {
                 };
             }
             return $this->mailer_instance;
+        }
+
+        public function shipping(): WC_Shipping {
+            if ( ! $this->shipping_instance ) $this->shipping_instance = new WC_Shipping();
+            return $this->shipping_instance;
         }
     }
 }

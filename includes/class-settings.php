@@ -12,6 +12,7 @@ final class IRIXFSL_Settings {
 		add_action( 'admin_post_irixfsl_save', [ $this, 'handle_save' ] );
 		add_action( 'admin_enqueue_scripts',  [ $this, 'enqueue_assets' ] );
 		add_action( 'admin_init',             [ $this, 'maybe_fix_carrier_urls' ] );
+		add_action( 'admin_init',             [ $this, 'maybe_migrate_local_delivery_methods' ] );
 	}
 
 	/**
@@ -60,6 +61,32 @@ final class IRIXFSL_Settings {
 		update_option( 'irixfsl_carrier_urls_migrated', '1' );
 	}
 
+	/**
+	 * Migration: local_delivery_methods used to be stored as a flat array of
+	 * plain method-ID strings (one per textarea line). It's now an array of
+	 * rows with a name/method_id/fee shape — wrap any old-format entries so
+	 * existing installs don't break on the new admin table or on
+	 * array_column() lookups in IRIXFSL_Tracking::get_fulfillment_type().
+	 *
+	 * Gated by an option flag so it only runs once and not on every admin load.
+	 */
+	public function maybe_migrate_local_delivery_methods(): void {
+		if ( get_option( 'irixfsl_local_delivery_methods_migrated' ) ) return;
+
+		$settings = (array) get_option( self::OPTION_KEY, [] );
+		$ldm      = $settings['local_delivery_methods'] ?? [];
+
+		if ( is_array( $ldm ) && ! empty( $ldm ) && ! is_array( reset( $ldm ) ) ) {
+			$settings['local_delivery_methods'] = array_map(
+				static fn( $id ) => [ 'name' => (string) $id, 'method_id' => (string) $id, 'fee' => '' ],
+				$ldm
+			);
+			update_option( self::OPTION_KEY, $settings );
+		}
+
+		update_option( 'irixfsl_local_delivery_methods_migrated', '1' );
+	}
+
 	/** Request-level cache — avoids repeated get_option() calls per page load. */
 	private static array $_cache = [];
 
@@ -96,6 +123,23 @@ final class IRIXFSL_Settings {
 		];
 	}
 
+	/**
+	 * Returns the shipping method IDs registered with WooCommerce (core types
+	 * like flat_rate/local_pickup/free_shipping, plus any custom method types
+	 * registered by other plugins), keyed by ID with a human-readable title —
+	 * used to populate the Method ID dropdown so admins don't have to guess
+	 * or type an exact ID by hand.
+	 */
+	public static function get_registered_shipping_methods(): array {
+		if ( ! function_exists( 'WC' ) || ! WC()->shipping() ) return [];
+
+		$choices = [];
+		foreach ( WC()->shipping()->get_shipping_methods() as $method ) {
+			$choices[ $method->id ] = $method->get_method_title() ?: $method->id;
+		}
+		return $choices;
+	}
+
 	public function register_menu(): void {
 		add_submenu_page(
 			'woocommerce',
@@ -110,9 +154,11 @@ final class IRIXFSL_Settings {
 	public function render_page(): void {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) return;
 
-		$s        = self::get();
-		$carriers = $s['carriers'] ?? [];
-		$logo_url = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
+		$s                        = self::get();
+		$carriers                 = $s['carriers'] ?? [];
+		$local_delivery_methods   = $s['local_delivery_methods'] ?? [];
+		$shipping_method_choices  = self::get_registered_shipping_methods();
+		$logo_url                 = $s['company_logo_id'] ? wp_get_attachment_image_url( $s['company_logo_id'], 'medium' ) : '';
 		?>
 		<div class="wrap irixfsl-settings-wrap">
 			<h1><?php esc_html_e( 'IRIX Fulfillment SL — Settings', 'irix-fulfillment-sl' ); ?></h1>
@@ -199,24 +245,42 @@ final class IRIXFSL_Settings {
 					<?php esc_html_e( 'Store Pickup orders (WooCommerce built-in local pickup) are detected automatically — no tracking is required and no shipping email is sent.', 'irix-fulfillment-sl' ); ?>
 				</p>
 				<br>
-				<h3><?php esc_html_e( 'Local Delivery Method IDs', 'irix-fulfillment-sl' ); ?></h3>
+				<h3><?php esc_html_e( 'Local Delivery Methods', 'irix-fulfillment-sl' ); ?></h3>
 				<p class="description">
-					<?php esc_html_e( 'Enter the WooCommerce shipping method IDs used for your own in-house delivery service (one per line). Orders using these methods can be shipped without a tracking number, and customers will not receive an external tracking link.', 'irix-fulfillment-sl' ); ?>
-					<br>
-					<em><?php esc_html_e( 'Example IDs: local_delivery, flat_rate, free_shipping. Find yours under WooCommerce → Settings → Shipping.', 'irix-fulfillment-sl' ); ?></em>
+					<?php esc_html_e( 'Tag your own in-house/local courier services here — give each one any name you like, and pick the WooCommerce shipping method it uses from the dropdown (add it under WooCommerce → Settings → Shipping first if it\'s not listed). Orders using these methods can be shipped without a tracking number, and customers will not receive an external tracking link.', 'irix-fulfillment-sl' ); ?>
 				</p>
-				<table class="form-table">
-					<tr>
-						<th><?php esc_html_e( 'Local Delivery Methods', 'irix-fulfillment-sl' ); ?></th>
-						<td>
-							<textarea name="irixfsl[local_delivery_methods]" rows="4" class="regular-text" placeholder="local_delivery&#10;flat_rate"><?php
-								$ldm = $s['local_delivery_methods'] ?? [];
-								echo esc_textarea( implode( "\n", (array) $ldm ) );
-							?></textarea>
-							<p class="description"><?php esc_html_e( 'One method ID per line.', 'irix-fulfillment-sl' ); ?></p>
-						</td>
-					</tr>
+
+				<table class="widefat irixfsl-local-delivery-table" id="irixfsl-local-delivery-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Name', 'irix-fulfillment-sl' ); ?></th>
+							<th><?php esc_html_e( 'Method ID', 'irix-fulfillment-sl' ); ?></th>
+							<th><?php esc_html_e( 'Fee (reference only)', 'irix-fulfillment-sl' ); ?></th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $local_delivery_methods as $i => $row ) : $i = (int) $i; $current_id = $row['method_id'] ?? ''; ?>
+						<tr class="irixfsl-local-delivery-row">
+							<td><input type="text" name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][name]" value="<?php echo esc_attr( $row['name'] ?? '' ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. In-house Rider', 'irix-fulfillment-sl' ); ?>"></td>
+							<td>
+								<select name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][method_id]" class="regular-text">
+									<option value=""><?php esc_html_e( '— Select shipping method —', 'irix-fulfillment-sl' ); ?></option>
+									<?php foreach ( $shipping_method_choices as $method_id => $method_title ) : ?>
+										<option value="<?php echo esc_attr( $method_id ); ?>" <?php selected( $current_id, $method_id ); ?>><?php echo esc_html( $method_title ); ?> (<?php echo esc_html( $method_id ); ?>)</option>
+									<?php endforeach; ?>
+									<?php if ( $current_id !== '' && ! isset( $shipping_method_choices[ $current_id ] ) ) : ?>
+										<option value="<?php echo esc_attr( $current_id ); ?>" selected><?php echo esc_html( $current_id ); ?> <?php esc_html_e( '(not currently registered)', 'irix-fulfillment-sl' ); ?></option>
+									<?php endif; ?>
+								</select>
+							</td>
+							<td><input type="number" step="0.01" min="0" name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][fee]" value="<?php echo esc_attr( $row['fee'] ?? '' ); ?>" placeholder="0.00"></td>
+							<td><button type="button" class="button irixfsl-remove-local-delivery"><?php esc_html_e( 'Remove', 'irix-fulfillment-sl' ); ?></button></td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
 				</table>
+				<p><button type="button" class="button" id="irixfsl-add-local-delivery"><?php esc_html_e( '+ Add Local Delivery Method', 'irix-fulfillment-sl' ); ?></button></p>
 
 				<?php submit_button( __( 'Save Settings', 'irix-fulfillment-sl' ) ); ?>
 			</form>
@@ -270,13 +334,37 @@ final class IRIXFSL_Settings {
 			}
 		}
 
-		// Local delivery method IDs — one per line, stored as array.
-		$ldm_raw             = sanitize_textarea_field( $raw['local_delivery_methods'] ?? '' );
-		$data['local_delivery_methods'] = array_values( array_filter(
-			array_map( 'trim', explode( "\n", $ldm_raw ) )
-		) );
+		$data['local_delivery_methods'] = self::sanitize_local_delivery_methods( $raw['local_delivery_methods'] ?? [] );
 
 		return $data;
+	}
+
+	/**
+	 * Sanitizes posted local_delivery_methods rows: drops rows with a blank
+	 * Method ID (that's the field actually matched against a real WooCommerce
+	 * shipping method's get_method_id()), and de-duplicates by Method ID —
+	 * last row for a given ID wins. Name is freeform and never required to
+	 * match anything; Fee is informational only.
+	 */
+	public static function sanitize_local_delivery_methods( array $raw_rows ): array {
+		$seen = [];
+		foreach ( $raw_rows as $row ) {
+			$method_id = sanitize_text_field( trim( (string) ( $row['method_id'] ?? '' ) ) );
+			if ( $method_id === '' ) continue;
+
+			$seen[ $method_id ] = [
+				'name'      => sanitize_text_field( $row['name'] ?? '' ),
+				'method_id' => $method_id,
+				'fee'       => self::sanitize_optional_number( $row['fee'] ?? '' ),
+			];
+		}
+		return array_values( $seen );
+	}
+
+	private static function sanitize_optional_number( $value ): string {
+		$value = trim( sanitize_text_field( (string) $value ) );
+		if ( $value === '' || ! is_numeric( $value ) ) return '';
+		return (string) max( 0, (float) $value );
 	}
 
 	public function enqueue_assets( string $hook ): void {
@@ -285,11 +373,13 @@ final class IRIXFSL_Settings {
 		wp_enqueue_media();
 		wp_enqueue_script( 'irixfsl-admin', IRIXFSL_URL . 'assets/js/admin.js', [ 'jquery', 'media-upload' ], IRIXFSL_VERSION, true );
 		wp_localize_script( 'irixfsl-admin', 'irixfslAdmin', [
+			'shippingMethods' => self::get_registered_shipping_methods(),
 			'i18n' => [
-				'selectLogo'   => __( 'Select Company Logo', 'irix-fulfillment-sl' ),
-				'useThisImage' => __( 'Use this image', 'irix-fulfillment-sl' ),
-				'remove'       => __( 'Remove', 'irix-fulfillment-sl' ),
-				'addCarrier'   => __( 'e.g. My Courier', 'irix-fulfillment-sl' ),
+				'selectLogo'          => __( 'Select Company Logo', 'irix-fulfillment-sl' ),
+				'useThisImage'        => __( 'Use this image', 'irix-fulfillment-sl' ),
+				'remove'              => __( 'Remove', 'irix-fulfillment-sl' ),
+				'addCarrier'          => __( 'e.g. My Courier', 'irix-fulfillment-sl' ),
+				'selectShippingMethod' => __( '— Select shipping method —', 'irix-fulfillment-sl' ),
 			],
 		] );
 		wp_enqueue_style( 'irixfsl-admin', IRIXFSL_URL . 'assets/css/admin.css', [], IRIXFSL_VERSION );

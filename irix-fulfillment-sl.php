@@ -101,4 +101,5 @@ register_uninstall_hook( __FILE__, 'irixfsl_uninstall' );
 function irixfsl_uninstall(): void {
 	delete_option( 'irixfsl_settings' );
 	delete_option( 'irixfsl_carrier_urls_migrated' );
+	delete_option( 'irixfsl_local_delivery_methods_migrated' );
 }

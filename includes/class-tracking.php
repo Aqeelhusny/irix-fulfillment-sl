@@ -12,6 +12,7 @@ final class IRIXFSL_Tracking {
 	const META_NUMBER   = '_irixfsl_tracking_number';
 	const META_URL      = '_irixfsl_tracking_url';
 	const META_SENT     = '_irixfsl_tracking_email_sent';
+	const META_LOCAL_DELIVERY_FEE_APPLIED = '_irixfsl_local_delivery_fee_applied';
 
 	protected function boot(): void {
 		add_action( 'add_meta_boxes',                      [ $this, 'add_meta_box' ] );
@@ -72,6 +73,16 @@ final class IRIXFSL_Tracking {
 		$sent             = $order->get_meta( self::META_SENT );
 		$carriers         = IRIXFSL_Settings::get( 'carriers' ) ?: [];
 		$fulfillment_type = self::get_fulfillment_type( $order );
+		$local_delivery_row = $fulfillment_type === 'local_delivery' ? $this->find_matching_local_delivery_row( $order ) : null;
+		$local_delivery_name = $local_delivery_row['name'] ?? '';
+		// Default the Carrier field to the matched local delivery method's
+		// name, but never override a value the admin already saved for this order.
+		$effective_carrier = $carrier !== '' ? $carrier : $local_delivery_name;
+		// The Carrier field is only editable while the order is actively being
+		// fulfilled — afterward it's shown read-only so the historical record
+		// (which carrier actually shipped it) can't be silently changed.
+		$carrier_editable_statuses = [ 'processing', 'ready-to-ship', 'shipped' ];
+		$carrier_is_editable       = in_array( $order->get_status(), $carrier_editable_statuses, true );
 
 		// Store pickup: no tracking needed at all.
 		if ( $fulfillment_type === 'pickup' ) {
@@ -96,14 +107,26 @@ final class IRIXFSL_Tracking {
 		<?php endif; ?>
 		<p>
 			<label for="irixfsl_carrier"><strong><?php esc_html_e( 'Carrier', 'irix-fulfillment-sl' ); ?></strong></label><br>
-			<select id="irixfsl_carrier" name="irixfsl_carrier" style="width:100%">
-				<option value=""><?php esc_html_e( '— Select Carrier —', 'irix-fulfillment-sl' ); ?></option>
-				<?php foreach ( $carriers as $c ) : ?>
-					<option value="<?php echo esc_attr( $c['name'] ); ?>" data-url="<?php echo esc_attr( $c['url'] ); ?>" <?php selected( $carrier, $c['name'] ); ?>>
-						<?php echo esc_html( $c['name'] ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
+			<?php if ( $carrier_is_editable ) : ?>
+				<select id="irixfsl_carrier" name="irixfsl_carrier" style="width:100%">
+					<option value=""><?php esc_html_e( '— Select Carrier —', 'irix-fulfillment-sl' ); ?></option>
+					<?php if ( $local_delivery_name !== '' ) : ?>
+						<option value="<?php echo esc_attr( $local_delivery_name ); ?>" <?php selected( $effective_carrier, $local_delivery_name ); ?>>
+							<?php echo esc_html( $local_delivery_name ); ?> (<?php esc_html_e( 'Local Delivery', 'irix-fulfillment-sl' ); ?>)
+						</option>
+					<?php endif; ?>
+					<?php foreach ( $carriers as $c ) : ?>
+						<option value="<?php echo esc_attr( $c['name'] ); ?>" data-url="<?php echo esc_attr( $c['url'] ); ?>" <?php selected( $effective_carrier, $c['name'] ); ?>>
+							<?php echo esc_html( $c['name'] ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			<?php else : ?>
+				<span style="display:block;padding:4px 0;color:#555;"><?php echo esc_html( $carrier !== '' ? $carrier : __( '— none —', 'irix-fulfillment-sl' ) ); ?></span>
+				<span class="description"><?php esc_html_e( 'Carrier can only be changed while the order is Processing, Ready to Ship, or Shipped.', 'irix-fulfillment-sl' ); ?></span>
+				<?php // Preserve the saved value on submit — this field isn't rendered as an editable control outside the allowed statuses. ?>
+				<input type="hidden" name="irixfsl_carrier" value="<?php echo esc_attr( $carrier ); ?>">
+			<?php endif; ?>
 		</p>
 		<p>
 			<label for="irixfsl_tracking_number">
@@ -198,6 +221,81 @@ final class IRIXFSL_Tracking {
 				[ 'source' => 'irix-fulfillment-sl' ]
 			);
 		}
+
+		$this->maybe_apply_local_delivery_fee( $order );
+	}
+
+	/**
+	 * When an order uses a shipping method configured (in Settings → Local
+	 * Delivery Methods) with a fee, adds that fee to the order as a "Local
+	 * Delivery Fee" line item and recalculates totals — once only, ever, per
+	 * order, tracked via order meta so re-saving the order never duplicates it.
+	 *
+	 * Runs on every admin save of a local-delivery order (see persist_tracking()
+	 * callers); the META_LOCAL_DELIVERY_FEE_APPLIED flag is set *before* the
+	 * order is re-saved below, so the resulting recursive
+	 * woocommerce_after_order_object_save / save_post_shop_order fire (guarded
+	 * anyway by self::$tracking_saved) sees the fee as already applied.
+	 */
+	private function maybe_apply_local_delivery_fee( WC_Order $order ): void {
+		if ( $order->get_meta( self::META_LOCAL_DELIVERY_FEE_APPLIED ) ) return;
+		if ( self::get_fulfillment_type( $order ) !== 'local_delivery' ) return;
+
+		$fee = $this->find_matching_local_delivery_fee( $order );
+		if ( $fee === null || (float) $fee <= 0 ) return;
+
+		$order->update_meta_data( self::META_LOCAL_DELIVERY_FEE_APPLIED, '1' );
+
+		try {
+			$fee_item = new WC_Order_Item_Fee();
+			$fee_item->set_name( __( 'Local Delivery Fee', 'irix-fulfillment-sl' ) );
+			$fee_item->set_amount( $fee );
+			$fee_item->set_total( $fee );
+			$fee_item->set_tax_status( 'none' );
+
+			$order->add_item( $fee_item );
+			$order->calculate_totals();
+			$order->save();
+		} catch ( \Exception $e ) {
+			wc_get_logger()->error(
+				sprintf( 'Failed to apply local delivery fee for order #%d: %s', $order->get_id(), $e->getMessage() ),
+				[ 'source' => 'irix-fulfillment-sl' ]
+			);
+		}
+	}
+
+	/**
+	 * Finds the configured fee for whichever of the order's shipping methods
+	 * matches a configured local_delivery_methods row, or null if none match
+	 * or the matching row has no fee configured.
+	 */
+	private function find_matching_local_delivery_fee( WC_Order $order ): ?string {
+		$row = $this->find_matching_local_delivery_row( $order );
+		$fee = $row['fee'] ?? '';
+		return $fee !== '' ? $fee : null;
+	}
+
+	/**
+	 * Finds the configured local_delivery_methods row (name/method_id/fee)
+	 * matching whichever of the order's shipping methods was used, or null
+	 * if none match.
+	 */
+	private function find_matching_local_delivery_row( WC_Order $order ): ?array {
+		$rows_by_method_id = [];
+		foreach ( (array) ( IRIXFSL_Settings::get( 'local_delivery_methods' ) ?: [] ) as $row ) {
+			if ( ! empty( $row['method_id'] ) ) {
+				$rows_by_method_id[ $row['method_id'] ] = $row;
+			}
+		}
+
+		foreach ( $order->get_shipping_methods() as $method ) {
+			$id = $method->get_method_id();
+			if ( isset( $rows_by_method_id[ $id ] ) ) {
+				return $rows_by_method_id[ $id ];
+			}
+		}
+
+		return null;
 	}
 
 	public function maybe_send_tracking_email( int $order_id ): void {
@@ -287,7 +385,7 @@ final class IRIXFSL_Tracking {
 		$pickup_ids = [ 'local_pickup', 'local_pickup_plus', 'pickup_location', 'pickup' ];
 
 		// Admin-configured in-house delivery method IDs.
-		$local_ids  = (array) ( IRIXFSL_Settings::get( 'local_delivery_methods' ) ?: [] );
+		$local_ids  = array_column( (array) ( IRIXFSL_Settings::get( 'local_delivery_methods' ) ?: [] ), 'method_id' );
 
 		foreach ( $order->get_shipping_methods() as $method ) {
 			$id = $method->get_method_id();

@@ -204,7 +204,9 @@ final class OrderStatusesTest extends TestCase {
 	public function test_enforce_tracking_allows_local_delivery_without_tracking(): void {
 		global $_irixfsl_test_options;
 		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
-			'local_delivery_methods' => [ 'my_delivery' ],
+			'local_delivery_methods' => [
+				[ 'name' => 'My Delivery', 'method_id' => 'my_delivery', 'fee' => '' ],
+			],
 		];
 		IRIXFSL_Settings::flush_cache();
 

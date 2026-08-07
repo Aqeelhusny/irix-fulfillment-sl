@@ -2,7 +2,20 @@
 (function ($) {
 	'use strict';
 
-	var i18n = (irixfslAdmin && irixfslAdmin.i18n) || {};
+	var i18n            = (irixfslAdmin && irixfslAdmin.i18n) || {};
+	var shippingMethods = (irixfslAdmin && irixfslAdmin.shippingMethods) || {};
+
+	function esc(str) {
+		return $('<div>').text(str || '').html();
+	}
+
+	function shippingMethodOptions() {
+		var options = '<option value="">' + esc(i18n.selectShippingMethod || '— Select shipping method —') + '</option>';
+		$.each(shippingMethods, function (id, title) {
+			options += '<option value="' + esc(id) + '">' + esc(title) + ' (' + esc(id) + ')</option>';
+		});
+		return options;
+	}
 
 	// Media uploader for company logo
 	var mediaUploader;
@@ -47,6 +60,24 @@
 	});
 
 	$(document).on('click', '.irixfsl-remove-carrier', function () {
+		$(this).closest('tr').remove();
+	});
+
+	// Dynamic local-delivery-method rows
+	var localDeliveryIndex = $('#irixfsl-local-delivery-table tbody tr').length;
+
+	$('#irixfsl-add-local-delivery').on('click', function () {
+		var row = '<tr class="irixfsl-local-delivery-row">' +
+			'<td><input type="text" name="irixfsl[local_delivery_methods][' + localDeliveryIndex + '][name]" value="" class="regular-text" placeholder="e.g. In-house Rider"></td>' +
+			'<td><select name="irixfsl[local_delivery_methods][' + localDeliveryIndex + '][method_id]" class="regular-text">' + shippingMethodOptions() + '</select></td>' +
+			'<td><input type="number" step="0.01" min="0" name="irixfsl[local_delivery_methods][' + localDeliveryIndex + '][fee]" value="" placeholder="0.00"></td>' +
+			'<td><button type="button" class="button irixfsl-remove-local-delivery">' + (i18n.remove || 'Remove') + '</button></td>' +
+			'</tr>';
+		$('#irixfsl-local-delivery-table tbody').append(row);
+		localDeliveryIndex++;
+	});
+
+	$(document).on('click', '.irixfsl-remove-local-delivery', function () {
 		$(this).closest('tr').remove();
 	});
 })(jQuery);
