@@ -55,6 +55,18 @@ final class IRIXFSL_Order_Statuses {
 				'label_count'               => _n_noop( 'Shipped <span class="count">(%s)</span>', 'Shipped <span class="count">(%s)</span>', 'irix-fulfillment-sl' ),
 			] );
 		}
+
+		if ( ! isset( $registered['wc-returned'] ) ) {
+			register_post_status( 'wc-returned', [
+				'label'                     => _x( 'Returned', 'Order status', 'irix-fulfillment-sl' ),
+				'public'                    => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				'exclude_from_search'       => false,
+				/* translators: %s = count */
+				'label_count'               => _n_noop( 'Returned <span class="count">(%s)</span>', 'Returned <span class="count">(%s)</span>', 'irix-fulfillment-sl' ),
+			] );
+		}
 	}
 
 	public function add_to_wc_statuses( array $statuses ): array {
@@ -69,6 +81,9 @@ final class IRIXFSL_Order_Statuses {
 				if ( ! isset( $statuses['wc-shipped'] ) ) {
 					$new['wc-shipped'] = _x( 'Shipped', 'Order status', 'irix-fulfillment-sl' );
 				}
+				if ( ! isset( $statuses['wc-returned'] ) ) {
+					$new['wc-returned'] = _x( 'Returned', 'Order status', 'irix-fulfillment-sl' );
+				}
 			}
 		}
 		// Fallback: if another plugin removed/renamed wc-processing, append at the end.
@@ -77,6 +92,9 @@ final class IRIXFSL_Order_Statuses {
 		}
 		if ( ! isset( $new['wc-shipped'] ) ) {
 			$new['wc-shipped'] = _x( 'Shipped', 'Order status', 'irix-fulfillment-sl' );
+		}
+		if ( ! isset( $new['wc-returned'] ) ) {
+			$new['wc-returned'] = _x( 'Returned', 'Order status', 'irix-fulfillment-sl' );
 		}
 		return $new;
 	}

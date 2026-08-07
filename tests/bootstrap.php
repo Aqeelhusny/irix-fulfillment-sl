@@ -5,7 +5,7 @@
  */
 
 define( 'ABSPATH', '/tmp/fake-wp/' );
-define( 'IRIXFSL_VERSION', '1.0.0' );
+define( 'IRIXFSL_VERSION', '1.1.0' );
 define( 'IRIXFSL_DIR', dirname( __DIR__ ) . '/' );
 define( 'IRIXFSL_URL', 'https://example.com/wp-content/plugins/irix-fulfillment-sl/' );
 define( 'IRIXFSL_PLUGIN_FILE', dirname( __DIR__ ) . '/irix-fulfillment-sl.php' );
@@ -403,7 +403,15 @@ if ( ! function_exists( 'wc_get_order_statuses' ) ) {
             'wc-failed'        => 'Failed',
             'wc-ready-to-ship' => 'Ready to Ship',
             'wc-shipped'       => 'Shipped',
+            'wc-returned'      => 'Returned',
         ];
+    }
+}
+
+if ( ! function_exists( 'wc_get_order_status_name' ) ) {
+    function wc_get_order_status_name( string $status ): string {
+        $statuses = wc_get_order_statuses();
+        return $statuses[ $status ] ?? ucfirst( str_replace( [ 'wc-', '-' ], [ '', ' ' ], $status ) );
     }
 }
 
@@ -596,6 +604,20 @@ if ( ! class_exists( 'WC_Order' ) ) {
         public function get_formatted_shipping_full_name(): string {
             return trim( $this->shipping_first_name . ' ' . $this->shipping_last_name );
         }
+
+        private array $notes = [];
+
+        public function add_order_note( string $note, int $is_customer_note = 0, bool $added_by_user = false ): int {
+            $this->notes[] = [
+                'note'             => $note,
+                'is_customer_note' => $is_customer_note,
+                'added_by_user'    => $added_by_user,
+            ];
+            return count( $this->notes );
+        }
+
+        /** Test-only helper — not part of the real WC_Order API. */
+        public function get_notes(): array { return $this->notes; }
     }
 }
 
@@ -739,6 +761,7 @@ require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 require_once IRIXFSL_DIR . 'includes/class-settings.php';
 require_once IRIXFSL_DIR . 'includes/class-tracking.php';
 require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';
+require_once IRIXFSL_DIR . 'includes/class-order-reason.php';
 require_once IRIXFSL_DIR . 'includes/class-invoice.php';
 require_once IRIXFSL_DIR . 'includes/class-packing-slip.php';
 require_once IRIXFSL_DIR . 'includes/class-waybill.php';

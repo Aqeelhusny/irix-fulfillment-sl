@@ -3,7 +3,7 @@
  * Plugin Name: IRIX Fulfillment SL
  * Plugin URI:  https://irixsolutions.net
  * Description: WooCommerce invoicing, packing slips, and order tracking with Sri Lanka carrier support.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Aqeel Husny
  * Text Domain: irix-fulfillment-sl
  * License:     GPLv2 or later
@@ -16,7 +16,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'IRIXFSL_VERSION',    '1.0.0' );
+define( 'IRIXFSL_VERSION',    '1.1.0' );
 define( 'IRIXFSL_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'IRIXFSL_URL',        plugin_dir_url( __FILE__ ) );
 define( 'IRIXFSL_PLUGIN_FILE', __FILE__ );
@@ -48,6 +48,7 @@ final class WC_Fulfillment_SL {
 		require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 		require_once IRIXFSL_DIR . 'includes/class-settings.php';
 		require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';
+		require_once IRIXFSL_DIR . 'includes/class-order-reason.php';
 		require_once IRIXFSL_DIR . 'includes/class-tracking.php';
 		require_once IRIXFSL_DIR . 'includes/class-invoice.php';
 		require_once IRIXFSL_DIR . 'includes/class-packing-slip.php';
@@ -57,6 +58,7 @@ final class WC_Fulfillment_SL {
 
 		IRIXFSL_Settings::instance();
 		IRIXFSL_Order_Statuses::instance();
+		IRIXFSL_Order_Reason::instance();
 		IRIXFSL_Tracking::instance();
 		IRIXFSL_Invoice::instance();
 		IRIXFSL_Packing_Slip::instance();

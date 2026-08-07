@@ -10,7 +10,7 @@ final class PluginTest extends TestCase {
 
 	public function test_version_constant_defined(): void {
 		$this->assertTrue( defined( 'IRIXFSL_VERSION' ) );
-		$this->assertSame( '1.0.0', IRIXFSL_VERSION );
+		$this->assertSame( '1.1.0', IRIXFSL_VERSION );
 	}
 
 	public function test_dir_constant_defined(): void {

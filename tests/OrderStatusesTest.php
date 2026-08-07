@@ -40,16 +40,25 @@ final class OrderStatusesTest extends TestCase {
 		$this->assertArrayHasKey( 'wc-shipped', $_irixfsl_test_post_stati );
 	}
 
+	public function test_register_statuses_creates_returned(): void {
+		$this->instance()->register_statuses();
+
+		global $_irixfsl_test_post_stati;
+		$this->assertArrayHasKey( 'wc-returned', $_irixfsl_test_post_stati );
+	}
+
 	public function test_register_statuses_skips_if_already_registered(): void {
 		global $_irixfsl_test_post_stati;
 		$_irixfsl_test_post_stati['wc-ready-to-ship'] = [ 'label' => 'Existing' ];
 		$_irixfsl_test_post_stati['wc-shipped']        = [ 'label' => 'Existing' ];
+		$_irixfsl_test_post_stati['wc-returned']       = [ 'label' => 'Existing' ];
 
 		$this->instance()->register_statuses();
 
 		// Should keep the existing definitions, not overwrite.
 		$this->assertSame( 'Existing', $_irixfsl_test_post_stati['wc-ready-to-ship']['label'] );
 		$this->assertSame( 'Existing', $_irixfsl_test_post_stati['wc-shipped']['label'] );
+		$this->assertSame( 'Existing', $_irixfsl_test_post_stati['wc-returned']['label'] );
 	}
 
 	// ── add_to_wc_statuses() ────────────────────────────────────────────
@@ -68,13 +77,16 @@ final class OrderStatusesTest extends TestCase {
 		$processingIdx    = array_search( 'wc-processing', $keys );
 		$readyToShipIdx   = array_search( 'wc-ready-to-ship', $keys );
 		$shippedIdx       = array_search( 'wc-shipped', $keys );
+		$returnedIdx      = array_search( 'wc-returned', $keys );
 		$onHoldIdx        = array_search( 'wc-on-hold', $keys );
 
 		$this->assertNotFalse( $readyToShipIdx );
 		$this->assertNotFalse( $shippedIdx );
+		$this->assertNotFalse( $returnedIdx );
 		$this->assertGreaterThan( $processingIdx, $readyToShipIdx );
 		$this->assertGreaterThan( $readyToShipIdx, $shippedIdx );
-		$this->assertGreaterThan( $shippedIdx, $onHoldIdx );
+		$this->assertGreaterThan( $shippedIdx, $returnedIdx );
+		$this->assertGreaterThan( $returnedIdx, $onHoldIdx );
 	}
 
 	public function test_add_to_wc_statuses_does_not_duplicate(): void {
@@ -83,6 +95,7 @@ final class OrderStatusesTest extends TestCase {
 			'wc-processing'     => 'Processing',
 			'wc-ready-to-ship'  => 'Ready to Ship',
 			'wc-shipped'        => 'Shipped',
+			'wc-returned'       => 'Returned',
 			'wc-completed'      => 'Completed',
 		];
 
@@ -91,6 +104,7 @@ final class OrderStatusesTest extends TestCase {
 		$count = array_count_values( array_keys( $result ) );
 		$this->assertSame( 1, $count['wc-ready-to-ship'] );
 		$this->assertSame( 1, $count['wc-shipped'] );
+		$this->assertSame( 1, $count['wc-returned'] );
 	}
 
 	// ── add_to_paid_statuses() ──────────────────────────────────────────
@@ -112,6 +126,14 @@ final class OrderStatusesTest extends TestCase {
 		$result = $this->instance()->add_to_paid_statuses( $statuses );
 
 		$this->assertCount( 4, $result );
+	}
+
+	public function test_add_to_paid_statuses_does_not_include_returned(): void {
+		// A returned order implies a reversal, not a settled payment — it
+		// should never count toward WooCommerce's "is paid" statuses.
+		$result = $this->instance()->add_to_paid_statuses( [ 'processing', 'completed' ] );
+
+		$this->assertNotContains( 'returned', $result );
 	}
 
 	// ── add_bulk_actions() ──────────────────────────────────────────────
