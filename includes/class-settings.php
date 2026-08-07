@@ -183,10 +183,10 @@ final class IRIXFSL_Settings {
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $carriers as $i => $carrier ) : ?>
+						<?php foreach ( $carriers as $i => $carrier ) : $i = (int) $i; ?>
 						<tr class="irixfsl-carrier-row">
-							<td><input type="text" name="irixfsl[carriers][<?php echo $i; ?>][name]" value="<?php echo esc_attr( $carrier['name'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Sri Lanka Post', 'irix-fulfillment-sl' ); ?>"></td>
-							<td><input type="text" name="irixfsl[carriers][<?php echo $i; ?>][url]" value="<?php echo esc_attr( $carrier['url'] ); ?>" class="large-text" placeholder="https://track.example.com/{number}"></td>
+							<td><input type="text" name="irixfsl[carriers][<?php echo esc_attr( $i ); ?>][name]" value="<?php echo esc_attr( $carrier['name'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Sri Lanka Post', 'irix-fulfillment-sl' ); ?>"></td>
+							<td><input type="text" name="irixfsl[carriers][<?php echo esc_attr( $i ); ?>][url]" value="<?php echo esc_attr( $carrier['url'] ); ?>" class="large-text" placeholder="https://track.example.com/{number}"></td>
 							<td><button type="button" class="button irixfsl-remove-carrier"><?php esc_html_e( 'Remove', 'irix-fulfillment-sl' ); ?></button></td>
 						</tr>
 						<?php endforeach; ?>
@@ -231,6 +231,22 @@ final class IRIXFSL_Settings {
 		check_admin_referer( 'irixfsl_save', 'irixfsl_nonce' );
 
 		$raw  = isset( $_POST['irixfsl'] ) ? (array) wp_unslash( $_POST['irixfsl'] ) : []; // phpcs:ignore
+		$data = self::prepare_data_for_save( $raw );
+
+		update_option( self::OPTION_KEY, $data );
+		self::flush_cache();
+
+		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
+		exit;
+	}
+
+	/**
+	 * Builds the sanitized options array that handle_save() persists, from the
+	 * raw (already wp_unslash()'d) $_POST['irixfsl'] payload. Pulled out of
+	 * handle_save() so the POST → sanitized-array wiring is testable without
+	 * triggering that method's terminating wp_safe_redirect()/exit.
+	 */
+	public static function prepare_data_for_save( array $raw ): array {
 		$data = [];
 
 		$data['company_name']    = sanitize_text_field( $raw['company_name'] ?? '' );
@@ -260,11 +276,7 @@ final class IRIXFSL_Settings {
 			array_map( 'trim', explode( "\n", $ldm_raw ) )
 		) );
 
-		update_option( self::OPTION_KEY, $data );
-		self::flush_cache();
-
-		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
-		exit;
+		return $data;
 	}
 
 	public function enqueue_assets( string $hook ): void {

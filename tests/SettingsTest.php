@@ -231,4 +231,20 @@ final class SettingsTest extends TestCase {
 		$this->assertSame( '', $_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ]['carriers'][0]['url'] );
 		$this->assertSame( '1', $_irixfsl_test_options['irixfsl_carrier_urls_migrated'] );
 	}
+
+	// ── prepare_data_for_save() (POST → sanitized array wiring) ─────────
+
+	public function test_prepare_data_for_save_wires_local_delivery_methods(): void {
+		$data = IRIXFSL_Settings::prepare_data_for_save( [
+			'local_delivery_methods' => "local_delivery\nflat_rate\n\n",
+		] );
+
+		$this->assertSame( [ 'local_delivery', 'flat_rate' ], $data['local_delivery_methods'] );
+	}
+
+	public function test_prepare_data_for_save_defaults_local_delivery_methods_to_empty_array_when_absent(): void {
+		$data = IRIXFSL_Settings::prepare_data_for_save( [] );
+
+		$this->assertSame( [], $data['local_delivery_methods'] );
+	}
 }
