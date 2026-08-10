@@ -29,6 +29,12 @@ final class SettingsTest extends TestCase {
 		$this->assertArrayHasKey( 'carriers', $defaults );
 		$this->assertArrayHasKey( 'local_delivery_methods', $defaults );
 		$this->assertArrayHasKey( 'waybill_scan_url', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_enabled', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_phone_number_id', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_access_token', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_template_name', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_template_language', $defaults );
+		$this->assertArrayHasKey( 'whatsapp_default_calling_code', $defaults );
 	}
 
 	public function test_defaults_company_name_from_bloginfo(): void {
@@ -379,5 +385,71 @@ final class SettingsTest extends TestCase {
 		$data = IRIXFSL_Settings::prepare_data_for_save( [] );
 
 		$this->assertSame( [], $data['local_delivery_methods'] );
+	}
+
+	// ── prepare_data_for_save() — WhatsApp settings ──────────────────────
+
+	public function test_prepare_data_for_save_wires_whatsapp_settings(): void {
+		$data = IRIXFSL_Settings::prepare_data_for_save( [
+			'whatsapp_enabled'              => '1',
+			'whatsapp_phone_number_id'      => '123456789',
+			'whatsapp_access_token'         => 'secret-token',
+			'whatsapp_template_name'        => 'order_shipped_notification',
+			'whatsapp_template_language'    => 'en_US',
+			'whatsapp_default_calling_code' => '94',
+		] );
+
+		$this->assertTrue( $data['whatsapp_enabled'] );
+		$this->assertSame( '123456789', $data['whatsapp_phone_number_id'] );
+		$this->assertSame( 'secret-token', $data['whatsapp_access_token'] );
+		$this->assertSame( 'order_shipped_notification', $data['whatsapp_template_name'] );
+		$this->assertSame( 'en_US', $data['whatsapp_template_language'] );
+		$this->assertSame( '94', $data['whatsapp_default_calling_code'] );
+	}
+
+	public function test_prepare_data_for_save_preserves_existing_whatsapp_token_when_blank(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'whatsapp_access_token' => 'existing-secret-token',
+		];
+		IRIXFSL_Settings::flush_cache();
+
+		// Simulates the settings form: the Access Token field is never
+		// redisplayed, so a blank submission must not wipe the saved token.
+		$data = IRIXFSL_Settings::prepare_data_for_save( [
+			'whatsapp_access_token' => '',
+		] );
+
+		$this->assertSame( 'existing-secret-token', $data['whatsapp_access_token'] );
+	}
+
+	public function test_prepare_data_for_save_overwrites_whatsapp_token_when_a_new_one_is_provided(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'whatsapp_access_token' => 'old-token',
+		];
+		IRIXFSL_Settings::flush_cache();
+
+		$data = IRIXFSL_Settings::prepare_data_for_save( [
+			'whatsapp_access_token' => 'new-token',
+		] );
+
+		$this->assertSame( 'new-token', $data['whatsapp_access_token'] );
+	}
+
+	public function test_prepare_data_for_save_defaults_whatsapp_language_and_calling_code_when_blank(): void {
+		$data = IRIXFSL_Settings::prepare_data_for_save( [
+			'whatsapp_template_language'    => '',
+			'whatsapp_default_calling_code' => '',
+		] );
+
+		$this->assertSame( 'en_US', $data['whatsapp_template_language'] );
+		$this->assertSame( '94', $data['whatsapp_default_calling_code'] );
+	}
+
+	public function test_prepare_data_for_save_whatsapp_enabled_defaults_to_false_when_absent(): void {
+		$data = IRIXFSL_Settings::prepare_data_for_save( [] );
+
+		$this->assertFalse( $data['whatsapp_enabled'] );
 	}
 }

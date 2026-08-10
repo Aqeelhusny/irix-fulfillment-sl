@@ -50,6 +50,7 @@ final class WC_Fulfillment_SL {
 		require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';
 		require_once IRIXFSL_DIR . 'includes/class-order-reason.php';
 		require_once IRIXFSL_DIR . 'includes/class-tracking.php';
+		require_once IRIXFSL_DIR . 'includes/class-whatsapp.php';
 		require_once IRIXFSL_DIR . 'includes/class-invoice.php';
 		require_once IRIXFSL_DIR . 'includes/class-packing-slip.php';
 		require_once IRIXFSL_DIR . 'includes/class-waybill.php';
@@ -60,6 +61,7 @@ final class WC_Fulfillment_SL {
 		IRIXFSL_Order_Statuses::instance();
 		IRIXFSL_Order_Reason::instance();
 		IRIXFSL_Tracking::instance();
+		IRIXFSL_Whatsapp::instance();
 		IRIXFSL_Invoice::instance();
 		IRIXFSL_Packing_Slip::instance();
 		IRIXFSL_Waybill::instance();

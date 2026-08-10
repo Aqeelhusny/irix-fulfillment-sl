@@ -120,6 +120,13 @@ final class IRIXFSL_Settings {
 			'local_delivery_methods'  => [],
 			// URL encoded as a QR code printed below the waybill (e.g. your shop or returns page).
 			'waybill_scan_url'        => '',
+			// WhatsApp Business Cloud API (Meta) — sends a template message when an order is marked Shipped.
+			'whatsapp_enabled'             => false,
+			'whatsapp_phone_number_id'     => '',
+			'whatsapp_access_token'        => '',
+			'whatsapp_template_name'       => '',
+			'whatsapp_template_language'   => 'en_US',
+			'whatsapp_default_calling_code' => '94',
 		];
 	}
 
@@ -282,6 +289,54 @@ final class IRIXFSL_Settings {
 				</table>
 				<p><button type="button" class="button" id="irixfsl-add-local-delivery"><?php esc_html_e( '+ Add Local Delivery Method', 'irix-fulfillment-sl' ); ?></button></p>
 
+				<h2><?php esc_html_e( 'WhatsApp Notifications', 'irix-fulfillment-sl' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Sends a WhatsApp message via the Meta WhatsApp Business Cloud API when an order is marked Shipped. This requires a pre-approved message template — freeform text cannot be sent for system-triggered notifications.', 'irix-fulfillment-sl' ); ?>
+				</p>
+				<table class="form-table">
+					<tr>
+						<th><?php esc_html_e( 'Enable WhatsApp Notifications', 'irix-fulfillment-sl' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="irixfsl[whatsapp_enabled]" value="1" <?php checked( ! empty( $s['whatsapp_enabled'] ) ); ?>>
+								<?php esc_html_e( 'Send a WhatsApp message automatically when an order is marked Shipped', 'irix-fulfillment-sl' ); ?>
+							</label>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Phone Number ID', 'irix-fulfillment-sl' ); ?></th>
+						<td>
+							<input type="text" name="irixfsl[whatsapp_phone_number_id]" value="<?php echo esc_attr( $s['whatsapp_phone_number_id'] ); ?>" class="regular-text">
+							<p class="description"><?php esc_html_e( 'From Meta Business Manager → WhatsApp Manager → API Setup.', 'irix-fulfillment-sl' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Access Token', 'irix-fulfillment-sl' ); ?></th>
+						<td>
+							<input type="password" name="irixfsl[whatsapp_access_token]" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo $s['whatsapp_access_token'] !== '' ? esc_attr__( '•••••••• (leave blank to keep current token)', 'irix-fulfillment-sl' ) : ''; ?>">
+							<p class="description"><?php esc_html_e( 'A permanent System User access token with whatsapp_business_messaging permission. Never displayed once saved — leave blank to keep the existing token.', 'irix-fulfillment-sl' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Template Name', 'irix-fulfillment-sl' ); ?></th>
+						<td>
+							<input type="text" name="irixfsl[whatsapp_template_name]" value="<?php echo esc_attr( $s['whatsapp_template_name'] ); ?>" class="regular-text" placeholder="order_shipped_notification">
+							<p class="description"><?php esc_html_e( 'The exact name of your approved Utility-category template. It must have 4 body variables, in order: customer name, order number, tracking link, store name.', 'irix-fulfillment-sl' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Template Language', 'irix-fulfillment-sl' ); ?></th>
+						<td><input type="text" name="irixfsl[whatsapp_template_language]" value="<?php echo esc_attr( $s['whatsapp_template_language'] ); ?>" class="regular-text" placeholder="en_US"></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Default Calling Code', 'irix-fulfillment-sl' ); ?></th>
+						<td>
+							<input type="text" name="irixfsl[whatsapp_default_calling_code]" value="<?php echo esc_attr( $s['whatsapp_default_calling_code'] ); ?>" class="small-text" placeholder="94">
+							<p class="description"><?php esc_html_e( 'Used to convert local-format phone numbers (e.g. 0771234567) to international format when the customer\'s phone doesn\'t already include a country code.', 'irix-fulfillment-sl' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button( __( 'Save Settings', 'irix-fulfillment-sl' ) ); ?>
 			</form>
 		</div>
@@ -335,6 +390,17 @@ final class IRIXFSL_Settings {
 		}
 
 		$data['local_delivery_methods'] = self::sanitize_local_delivery_methods( $raw['local_delivery_methods'] ?? [] );
+
+		$data['whatsapp_enabled']           = ! empty( $raw['whatsapp_enabled'] );
+		$data['whatsapp_phone_number_id']   = sanitize_text_field( $raw['whatsapp_phone_number_id'] ?? '' );
+		$data['whatsapp_template_name']     = sanitize_text_field( $raw['whatsapp_template_name'] ?? '' );
+		$data['whatsapp_template_language'] = sanitize_text_field( $raw['whatsapp_template_language'] ?? '' ) ?: 'en_US';
+		$data['whatsapp_default_calling_code'] = preg_replace( '/\D+/', '', (string) ( $raw['whatsapp_default_calling_code'] ?? '' ) ) ?: '94';
+
+		// The Access Token field is never redisplayed once saved (see render_page()) —
+		// a blank submission means "leave it unchanged", not "clear it".
+		$posted_token = sanitize_text_field( $raw['whatsapp_access_token'] ?? '' );
+		$data['whatsapp_access_token'] = $posted_token !== '' ? $posted_token : (string) self::get( 'whatsapp_access_token' );
 
 		return $data;
 	}

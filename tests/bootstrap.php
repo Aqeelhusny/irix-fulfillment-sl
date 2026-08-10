@@ -195,6 +195,45 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
     function wp_json_encode( $data ): string { return json_encode( $data ); }
 }
 
+/**
+ * Minimal WP_Error stub, plus a controllable wp_remote_post() so tests can
+ * simulate success, a WP_Error (network failure), or a non-2xx API response.
+ * Set $_irixfsl_test_http_response before calling code that sends an HTTP
+ * request; every call is also recorded to $_irixfsl_test_http_requests.
+ */
+if ( ! class_exists( 'WP_Error' ) ) {
+    class WP_Error {
+        private string $message;
+        public function __construct( string $code = '', string $message = '' ) { $this->message = $message; }
+        public function get_error_message(): string { return $this->message; }
+    }
+}
+
+if ( ! function_exists( 'is_wp_error' ) ) {
+    function is_wp_error( $thing ): bool { return $thing instanceof WP_Error; }
+}
+
+if ( ! function_exists( 'wp_remote_post' ) ) {
+    function wp_remote_post( string $url, array $args = [] ) {
+        global $_irixfsl_test_http_response, $_irixfsl_test_http_requests;
+        $_irixfsl_test_http_requests[] = [ 'url' => $url, 'args' => $args ];
+        if ( $_irixfsl_test_http_response instanceof WP_Error ) return $_irixfsl_test_http_response;
+        return $_irixfsl_test_http_response ?? [ 'response' => [ 'code' => 200 ], 'body' => '{}' ];
+    }
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+    function wp_remote_retrieve_response_code( $response ) {
+        return $response['response']['code'] ?? 0;
+    }
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+    function wp_remote_retrieve_body( $response ) {
+        return $response['body'] ?? '';
+    }
+}
+
 if ( ! function_exists( 'wp_validate_redirect' ) ) {
     function wp_validate_redirect( string $url, string $default = '' ): string { return $url ?: $default; }
 }
@@ -336,6 +375,14 @@ if ( ! function_exists( 'wp_nonce_field' ) ) {
 if ( ! function_exists( 'selected' ) ) {
     function selected( $selected, $current = true, bool $echo = true ): string {
         $result = $selected == $current ? ' selected="selected"' : '';
+        if ( $echo ) echo $result;
+        return $result;
+    }
+}
+
+if ( ! function_exists( 'checked' ) ) {
+    function checked( $checked, $current = true, bool $echo = true ): string {
+        $result = $checked == $current ? ' checked="checked"' : '';
         if ( $echo ) echo $result;
         return $result;
     }
@@ -611,6 +658,7 @@ if ( ! class_exists( 'WC_Order' ) ) {
         public function get_billing_postcode(): string { return $this->billing_postcode; }
         public function get_billing_country(): string { return $this->billing_country; }
         public function get_billing_phone(): string { return $this->billing_phone; }
+        public function set_billing_phone( string $phone ): void { $this->billing_phone = $phone; }
 
         public function get_shipping_first_name(): string { return $this->shipping_first_name; }
         public function get_shipping_last_name(): string { return $this->shipping_last_name; }
@@ -835,6 +883,7 @@ require_once IRIXFSL_DIR . 'includes/trait-singleton.php';
 require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 require_once IRIXFSL_DIR . 'includes/class-settings.php';
 require_once IRIXFSL_DIR . 'includes/class-tracking.php';
+require_once IRIXFSL_DIR . 'includes/class-whatsapp.php';
 require_once IRIXFSL_DIR . 'includes/class-order-statuses.php';
 require_once IRIXFSL_DIR . 'includes/class-order-reason.php';
 require_once IRIXFSL_DIR . 'includes/class-invoice.php';
