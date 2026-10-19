@@ -51,7 +51,7 @@ final class IRIXFSL_Customer_Portal {
 		$order     = wc_get_order( $order_id );
 
 		if ( ! $order || ! hash_equals( $order->get_order_key(), $order_key ) ) {
-			echo '<p>' . esc_html__( 'Order not found or access denied.', 'irix-fulfillment-sl' ) . '</p>';
+			wc_print_notice( __( 'Order not found or access denied.', 'irix-fulfillment-sl' ), 'error' );
 			return;
 		}
 
@@ -60,82 +60,122 @@ final class IRIXFSL_Customer_Portal {
 	}
 
 	private function render_tracking_lookup(): void {
-		?>
-		<p><?php esc_html_e( 'Enter your order details to track your shipment.', 'irix-fulfillment-sl' ); ?></p>
-		<form method="get" action="<?php echo esc_url( wc_get_account_endpoint_url( self::ENDPOINT_TRACK ) ); ?>">
-			<p>
-				<label><?php esc_html_e( 'Order ID', 'irix-fulfillment-sl' ); ?><br>
-				<input type="number" name="irixfsl_oid" min="1" required style="width:100%;max-width:300px"></label>
-			</p>
-			<p>
-				<label><?php esc_html_e( 'Order Key (from your email)', 'irix-fulfillment-sl' ); ?><br>
-				<input type="text" name="order_key" required style="width:100%;max-width:300px"></label>
-			</p>
-			<p><button type="submit" class="button"><?php esc_html_e( 'Track Order', 'irix-fulfillment-sl' ); ?></button></p>
-		</form>
-		<?php
-		// Handle lookup submit
+		// Handle lookup submit first so the result (or error) sits above the form.
 		if ( isset( $_GET['irixfsl_oid'] ) ) { // phpcs:ignore
 			$oid = absint( $_GET['irixfsl_oid'] ); // phpcs:ignore
 			$key = sanitize_text_field( $_GET['order_key'] ?? '' ); // phpcs:ignore
 			$o   = wc_get_order( $oid );
 			if ( $o && hash_equals( $o->get_order_key(), $key ) ) {
 				$this->render_tracking_info( $o, IRIXFSL_Tracking::get_tracking( $o ) );
-			} else {
-				echo '<p style="color:red">' . esc_html__( 'Order not found. Please check your details.', 'irix-fulfillment-sl' ) . '</p>';
+				return;
 			}
+			wc_print_notice( __( 'Order not found. Please check your details.', 'irix-fulfillment-sl' ), 'error' );
 		}
+		?>
+		<p><?php esc_html_e( 'Enter your order details to track your shipment.', 'irix-fulfillment-sl' ); ?></p>
+		<form method="get" class="woocommerce-form irixfsl-track-form" action="<?php echo esc_url( wc_get_account_endpoint_url( self::ENDPOINT_TRACK ) ); ?>">
+			<p class="woocommerce-form-row form-row form-row-first">
+				<label for="irixfsl_oid"><?php esc_html_e( 'Order ID', 'irix-fulfillment-sl' ); ?>&nbsp;<span class="required" aria-hidden="true">*</span></label>
+				<input type="number" class="woocommerce-Input input-text" name="irixfsl_oid" id="irixfsl_oid" min="1" required inputmode="numeric">
+			</p>
+			<p class="woocommerce-form-row form-row form-row-last">
+				<label for="irixfsl_order_key"><?php esc_html_e( 'Order Key (from your email)', 'irix-fulfillment-sl' ); ?>&nbsp;<span class="required" aria-hidden="true">*</span></label>
+				<input type="text" class="woocommerce-Input input-text" name="order_key" id="irixfsl_order_key" required autocomplete="off">
+			</p>
+			<div class="clear"></div>
+			<p><button type="submit" class="woocommerce-button button"><?php esc_html_e( 'Track Order', 'irix-fulfillment-sl' ); ?></button></p>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Progress steps for the customer view, wording adapted to how the order
+	 * is fulfilled. Returns [ steps, current index ] — index -1 means the order
+	 * left the normal flow (cancelled, refunded, returned, failed): no tracker.
+	 */
+	public static function progress_steps( WC_Order $order ): array {
+		$type  = IRIXFSL_Tracking::get_fulfillment_type( $order );
+		$steps = [
+			__( 'Order placed', 'irix-fulfillment-sl' ),
+			__( 'Processing', 'irix-fulfillment-sl' ),
+			__( 'Packed', 'irix-fulfillment-sl' ),
+			[
+				'pickup'         => __( 'Ready for pickup', 'irix-fulfillment-sl' ),
+				'local_delivery' => __( 'Out for delivery', 'irix-fulfillment-sl' ),
+			][ $type ] ?? __( 'Shipped', 'irix-fulfillment-sl' ),
+			$type === 'pickup' ? __( 'Collected', 'irix-fulfillment-sl' ) : __( 'Delivered', 'irix-fulfillment-sl' ),
+		];
+		$index = [
+			'pending'       => 0,
+			'on-hold'       => 0,
+			'processing'    => 1,
+			'ready-to-ship' => 2,
+			'shipped'       => 3,
+			'completed'     => 4,
+		][ $order->get_status() ] ?? -1;
+
+		return [ $steps, $index ];
 	}
 
 	private function render_tracking_info( WC_Order $order, array $tracking ): void {
-		$status_label = wc_get_order_statuses()[ 'wc-' . $order->get_status() ] ?? ucfirst( $order->get_status() );
+		wp_enqueue_style( 'irixfsl-portal', IRIXFSL_URL . 'assets/css/portal.css', [], IRIXFSL_VERSION );
+
+		$status_label     = wc_get_order_status_name( $order->get_status() );
+		[ $steps, $current ] = self::progress_steps( $order );
 		?>
-		<div class="irixfsl-tracking-info" style="max-width:600px">
-			<h3><?php printf( esc_html__( 'Order #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></h3>
-			<table class="irixfsl-tracking-table" style="width:100%;border-collapse:collapse">
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Order Status', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px"><?php echo esc_html( $status_label ); ?></td>
-				</tr>
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Order Date', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px"><?php echo esc_html( wc_format_datetime( $order->get_date_created() ) ); ?></td>
-				</tr>
-				<?php if ( $tracking['carrier'] ) : ?>
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Carrier', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px"><?php echo esc_html( $tracking['carrier'] ); ?></td>
-				</tr>
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Tracking Number', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px">
-						<?php if ( $tracking['url'] ) : ?>
-							<a href="<?php echo esc_url( $tracking['url'] ); ?>" target="_blank" rel="noopener noreferrer">
-								<?php echo esc_html( $tracking['number'] ); ?>
-							</a>
-						<?php else : ?>
-							<?php echo esc_html( $tracking['number'] ); ?>
-						<?php endif; ?>
-					</td>
-				</tr>
-				<?php if ( $tracking['url'] ) : ?>
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Track Shipment', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px">
-						<a href="<?php echo esc_url( $tracking['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="button">
-							<?php esc_html_e( 'Track on Carrier Website', 'irix-fulfillment-sl' ); ?>
-						</a>
-					</td>
-				</tr>
-				<?php endif; ?>
-				<?php else : ?>
-				<tr>
-					<th style="text-align:left;padding:8px 12px;background:#f6f6f6"><?php esc_html_e( 'Tracking', 'irix-fulfillment-sl' ); ?></th>
-					<td style="padding:8px 12px"><?php esc_html_e( 'Tracking information will appear here once your order is shipped.', 'irix-fulfillment-sl' ); ?></td>
-				</tr>
-				<?php endif; ?>
+		<section class="irixfsl-tracking-info">
+			<h2 class="irixfsl-tracking-title">
+				<?php printf( esc_html__( 'Order #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?>
+				<mark class="order-status status-<?php echo esc_attr( $order->get_status() ); ?>"><?php echo esc_html( $status_label ); ?></mark>
+			</h2>
+
+			<?php if ( $current >= 0 ) : ?>
+			<ol class="irixfsl-progress" aria-label="<?php esc_attr_e( 'Order progress', 'irix-fulfillment-sl' ); ?>">
+				<?php foreach ( $steps as $i => $step ) :
+					$state = $i < $current ? 'done' : ( $i === $current ? 'current' : 'todo' ); ?>
+					<li class="irixfsl-progress__step is-<?php echo esc_attr( $state ); ?>"<?php echo $state === 'current' ? ' aria-current="step"' : ''; ?>>
+						<span class="irixfsl-progress__dot" aria-hidden="true"></span>
+						<span class="irixfsl-progress__label"><?php echo esc_html( $step ); ?></span>
+					</li>
+				<?php endforeach; ?>
+			</ol>
+			<?php endif; ?>
+
+			<table class="woocommerce-table shop_table irixfsl-tracking-table">
+				<tbody>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Order Date', 'irix-fulfillment-sl' ); ?></th>
+						<td><?php echo esc_html( wc_format_datetime( $order->get_date_created() ) ); ?></td>
+					</tr>
+					<?php if ( $tracking['carrier'] ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Carrier', 'irix-fulfillment-sl' ); ?></th>
+						<td><?php echo esc_html( $tracking['carrier'] ); ?></td>
+					</tr>
+					<?php endif; ?>
+					<?php if ( $tracking['number'] ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Tracking Number', 'irix-fulfillment-sl' ); ?></th>
+						<td><code class="irixfsl-tracking-number"><?php echo esc_html( $tracking['number'] ); ?></code></td>
+					</tr>
+					<?php endif; ?>
+					<?php if ( ! $tracking['carrier'] && ! $tracking['number'] ) : ?>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Tracking', 'irix-fulfillment-sl' ); ?></th>
+						<td><?php esc_html_e( 'Tracking information will appear here once your order is shipped.', 'irix-fulfillment-sl' ); ?></td>
+					</tr>
+					<?php endif; ?>
+				</tbody>
 			</table>
-		</div>
+
+			<?php if ( $tracking['url'] ) : ?>
+			<p>
+				<a href="<?php echo esc_url( $tracking['url'] ); ?>" target="_blank" rel="noopener noreferrer" class="woocommerce-button button">
+					<?php esc_html_e( 'Track on Carrier Website', 'irix-fulfillment-sl' ); ?>
+				</a>
+			</p>
+			<?php endif; ?>
+		</section>
 		<?php
 	}
 
@@ -150,7 +190,12 @@ final class IRIXFSL_Customer_Portal {
 		$tracking = IRIXFSL_Tracking::get_tracking( $order );
 		if ( $tracking['number'] ) {
 			$actions['irixfsl_track'] = [
-				'url'  => $tracking['url'] ?: wc_get_account_endpoint_url( self::ENDPOINT_TRACK ),
+				// No carrier URL: open this order's tracking page directly — the
+				// lookup form asks for an order key customers never see.
+				'url'  => $tracking['url'] ?: add_query_arg(
+					[ 'order_key' => $order->get_order_key() ],
+					wc_get_endpoint_url( self::ENDPOINT_TRACK, (string) $order->get_id(), wc_get_page_permalink( 'myaccount' ) )
+				),
 				'name' => __( 'Track Order', 'irix-fulfillment-sl' ),
 			];
 		}

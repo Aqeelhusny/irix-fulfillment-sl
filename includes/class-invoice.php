@@ -33,6 +33,7 @@ final class IRIXFSL_Invoice {
 			wp_die( esc_html__( 'Access denied.', 'irix-fulfillment-sl' ) );
 		}
 
+		nocache_headers(); // Personal data — keep out of page/CDN caches.
 		$this->render_invoice( $order );
 		exit;
 	}

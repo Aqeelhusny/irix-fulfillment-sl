@@ -30,6 +30,7 @@ final class IRIXFSL_Packing_Slip {
 		$logo_url  = $ctx['logo_url'];
 		$print_url = $ctx['print_url'];
 
+		nocache_headers(); // Personal data — keep out of page/CDN caches.
 		include IRIXFSL_DIR . 'templates/packing-slip.php';
 		exit;
 	}

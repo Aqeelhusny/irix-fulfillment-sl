@@ -6,46 +6,87 @@
 <title><?php esc_html_e( 'Packing Slips', 'irix-fulfillment-sl' ); ?></title>
 <link rel="stylesheet" href="<?php echo esc_url( $print_url ); ?>">
 <style>
+	/* Minimal document style: system font, hairlines, one dark accent. */
 	* { box-sizing: border-box; margin: 0; padding: 0; }
-	body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #f4f4f4; }
-	.irixfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 14mm 14mm; page-break-after: always; }
+	body {
+		font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+		font-size: 13px;
+		line-height: 1.5;
+		color: #18181b;
+		background: #f4f4f5;
+		-webkit-font-smoothing: antialiased;
+	}
+	.irixfsl-doc { background: #fff; width: 210mm; margin: 24px auto; page-break-after: always; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 	.irixfsl-doc:last-child { page-break-after: auto; }
 
-	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-	.company-logo img { max-height: 55px; }
-	.doc-title h1 { font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: #111; }
-	.doc-title .slip-meta { font-size: 12px; color: #555; margin-top: 6px; line-height: 1.7; }
-	.doc-title .slip-meta strong { color: #111; }
-	.company-info { font-size: 11px; color: #555; line-height: 1.6; margin-top: 4px; }
-	.company-info strong { color: #111; }
+	/* Floating print button (screen only) */
+	.print-bar { position: fixed; top: 16px; right: 16px; z-index: 999; }
+	.print-bar button {
+		padding: 9px 18px;
+		background: #18181b;
+		color: #fff;
+		border: 0;
+		border-radius: 8px;
+		font: 500 13px/1 inherit;
+		font-family: inherit;
+		cursor: pointer;
+		box-shadow: 0 4px 12px rgba(0,0,0,.15);
+	}
+	.print-bar button:hover { background: #3f3f46; }
 
-	hr { border: none; border-top: 2px solid #111; margin: 12px 0; }
-
-	.address-row { display: flex; gap: 24px; margin-bottom: 16px; }
+	/* Shared pieces */
+	.address-row { display: flex; gap: 32px; }
 	.address-box { flex: 1; }
-	.address-box h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px; }
-	.address-box address { font-style: normal; font-size: 12px; line-height: 1.7; }
+	.address-box h4 { margin-bottom: 6px; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; }
+	.address-box address { font-style: normal; font-size: 12px; line-height: 1.65; color: #3f3f46; }
+	.address-box address strong { color: #18181b; font-weight: 600; }
 
 	.items-table { width: 100%; border-collapse: collapse; }
-	.items-table thead th { background: #111; color: #fff; font-size: 11px; padding: 8px 10px; text-align: left; }
-	.items-table thead th.text-right { text-align: right; }
-	.items-table tbody tr:nth-child(even) td { background: #fafafa; }
-	.items-table tbody td { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #eee; }
-	.items-table tbody td.text-right { text-align: right; font-weight: 700; }
-	.item-meta { font-size: 11px; color: #888; margin-top: 2px; }
-
-	.tracking-row { margin-top: 14px; padding: 10px 12px; background: #f0f4ff; border-left: 3px solid #2271b1; font-size: 12px; }
-	.tracking-row strong { display: block; margin-bottom: 4px; }
-
-	.doc-footer { margin-top: 16px; text-align: center; font-size: 11px; color: #aaa; }
-
-	.print-bar { background: #1a1a1a; color: #fff; text-align: center; padding: 12px; position: sticky; top: 0; z-index: 999; }
-	.print-bar button { background: #fff; color: #1a1a1a; border: none; padding: 8px 24px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 3px; }
-	@media print {
-		body { background: white; }
-		.print-bar { display: none; }
-		.irixfsl-doc { margin: 0; padding: 12mm; box-shadow: none; width: 100%; }
+	.items-table thead th {
+		padding: 0 10px 8px;
+		border-bottom: 1px solid #e4e4e7;
+		background: none;
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: .08em;
+		text-transform: uppercase;
+		text-align: left;
+		color: #a1a1aa;
 	}
+	.items-table thead th:first-child,
+	.items-table tbody td:first-child { padding-left: 0; }
+	.items-table thead th:last-child,
+	.items-table tbody td:last-child { padding-right: 0; }
+	.items-table thead th.text-right { text-align: right; }
+	.items-table tbody td { padding: 11px 10px; font-size: 12px; border-bottom: 1px solid #f4f4f5; vertical-align: top; background: none; }
+	.items-table tbody td.text-right { text-align: right; font-variant-numeric: tabular-nums; }
+	.item-meta, .items-table .item-meta { margin-top: 3px; font-size: 11px; color: #a1a1aa; }
+
+	.doc-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #f4f4f5; text-align: center; font-size: 11px; color: #a1a1aa; }
+
+	@media print {
+		body { background: #fff; }
+		.print-bar { display: none; }
+		.irixfsl-doc { margin: 0; width: 100%; border-radius: 0; box-shadow: none; }
+	}
+
+	.irixfsl-doc { padding: 14mm; }
+
+	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 28px; }
+	.company-logo img { max-height: 44px; margin-bottom: 8px; }
+	.company-info { font-size: 11px; line-height: 1.6; color: #71717a; }
+	.company-info strong { color: #18181b; font-weight: 600; }
+	.doc-title { text-align: right; }
+	.doc-title h1 { font-size: 20px; font-weight: 600; letter-spacing: -.01em; color: #18181b; }
+	.doc-title .slip-meta { margin-top: 6px; font-size: 12px; line-height: 1.8; color: #71717a; }
+	.doc-title .slip-meta strong { font-weight: 500; color: #3f3f46; }
+
+	hr { display: none; }
+	.address-row { margin-bottom: 24px; }
+	.items-table tbody td.text-right { font-weight: 600; font-size: 13px; }
+
+	.tracking-row { margin-top: 20px; padding: 12px 14px; background: #fafafa; border-radius: 8px; font-size: 12px; color: #3f3f46; }
+	.tracking-row strong { display: block; margin-bottom: 4px; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; }
 </style>
 </head>
 <body>

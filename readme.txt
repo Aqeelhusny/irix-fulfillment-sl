@@ -1,10 +1,12 @@
 === IRIX Fulfillment SL ===
 Contributors: irix
 Tags: woocommerce, fulfillment, shipping, tracking, invoice, packing slip, waybill, sri lanka
-Requires at least: 6.2
-Tested up to: 6.7
-Requires PHP: 8.1
-Stable tag: 1.0.0
+Requires at least: 6.5
+Tested up to: 7.1
+Requires PHP: 8.0
+WC requires at least: 8.0
+WC tested up to: 10.9
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -59,7 +61,7 @@ Configure company name, address, phone, email, and logo. Manage carrier list wit
 
 = Can I use this without WooCommerce? =
 
-No. IRIX Fulfillment SL requires WooCommerce 7.0 or later.
+No. IRIX Fulfillment SL requires WooCommerce 8.0 or later.
 
 = Does it work with WooCommerce HPOS (High-Performance Order Storage)? =
 
@@ -96,6 +98,27 @@ Enter a URL in **Settings → Waybill Scan URL**. A QR code for that URL is prin
 
 == Changelog ==
 
+= 1.2.0 =
+* Compatibility: tested with WordPress 7.1 and WooCommerce 10.9 (HPOS and legacy order storage).
+* Fix: bulk Print Invoices / Print Packing Slips / Change status to Ready to Ship / Shipped now work (were hooked to a non-existent filter).
+* Fix: bulk "Shipped" now enforces the tracking-number rule (WooCommerce core was intercepting the old action key).
+* Fix: WhatsApp message no longer sent for an order that is reverted from Shipped for missing tracking.
+* Fix: tracking email no longer reuses "out for delivery" wording for standard orders sent in the same request.
+* Fix: invoice totals now list fees (incl. Local Delivery Fee), discounts and refunds and always add up.
+* Fix: Local Delivery Fee only added while an order is still open (pending / on hold / processing / ready to ship).
+* New: waybill shows "Cash on Delivery — Collect" amount for COD orders and "Prepaid — Do Not Collect" for prepaid local delivery.
+* New: tracking email and WhatsApp send in the background via Action Scheduler (manual resend stays instant).
+* New: Returned orders restock items and are excluded from WooCommerce Analytics revenue.
+* Change: WhatsApp Cloud API updated to Graph v25.0 (filter: irixfsl_whatsapp_api_version).
+* Change: My Account "Track Order" link opens the order's tracking page directly.
+* Change: printable documents send no-cache headers; barcode encodes the tracking number's exact case.
+* Notice on the settings page when WooCommerce's native Order Fulfillments feature is enabled.
+
+= 1.1.0 =
+* Returned order status with required reason for Returned / Refunded.
+* Local delivery methods table with optional fee.
+* WhatsApp notification on shipment.
+
 = 1.0.0 =
 * Initial release.
 * Custom order statuses: Ready to Ship, Shipped.
@@ -111,6 +134,9 @@ Enter a URL in **Settings → Waybill Scan URL**. A QR code for that URL is prin
 * Plugin renamed from wc-fulfillment-sl to irix-fulfillment-sl.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Fixes bulk actions, invoice totals and WhatsApp sends for reverted orders. Tracking emails now send in the background a few seconds after an order is marked Shipped.
 
 = 1.0.0 =
 Initial release. No upgrade steps required.

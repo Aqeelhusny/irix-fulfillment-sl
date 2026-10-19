@@ -13,67 +13,104 @@
 ?></title>
 <link rel="stylesheet" href="<?php echo esc_url( $print_url ); ?>">
 <style>
+	/* Minimal document style: system font, hairlines, one dark accent. */
 	* { box-sizing: border-box; margin: 0; padding: 0; }
-	body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; background: #f4f4f4; }
-	.irixfsl-doc { background: #fff; width: 210mm; margin: 10px auto; padding: 20mm 18mm; page-break-after: always; }
+	body {
+		font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+		font-size: 13px;
+		line-height: 1.5;
+		color: #18181b;
+		background: #f4f4f5;
+		-webkit-font-smoothing: antialiased;
+	}
+	.irixfsl-doc { background: #fff; width: 210mm; margin: 24px auto; page-break-after: always; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 	.irixfsl-doc:last-child { page-break-after: auto; }
 
-	/* Header */
-	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-	.doc-header .company-logo img { max-height: 70px; max-width: 200px; }
-	.doc-header .doc-title { text-align: right; }
-	.doc-header .doc-title h1 { font-size: 28px; font-weight: 700; letter-spacing: 2px; color: #111; text-transform: uppercase; }
-	.doc-header .doc-title .invoice-meta { margin-top: 8px; color: #555; font-size: 12px; line-height: 1.7; }
-	.doc-header .doc-title .invoice-meta strong { color: #111; }
-
-	.company-details { font-size: 12px; color: #444; line-height: 1.7; margin-top: 6px; }
-	.company-details strong { display: block; font-size: 14px; color: #111; margin-bottom: 2px; }
-
-	/* Address row */
-	.address-row { display: flex; gap: 30px; margin-bottom: 24px; }
-	.address-box { flex: 1; }
-	.address-box h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 6px; border-bottom: 1px solid #e5e5e5; padding-bottom: 4px; }
-	.address-box address { font-style: normal; font-size: 12px; line-height: 1.7; color: #333; }
-
-	/* Divider */
-	.divider { border: none; border-top: 2px solid #111; margin: 20px 0; }
-
-	/* Items table */
-	.items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-	.items-table thead th { background: #111; color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 9px 10px; text-align: left; }
-	.items-table thead th.text-right { text-align: right; }
-	.items-table tbody tr:nth-child(even) td { background: #fafafa; }
-	.items-table tbody td { padding: 9px 10px; font-size: 12px; border-bottom: 1px solid #eee; vertical-align: top; }
-	.items-table tbody td.text-right { text-align: right; }
-	.items-table tfoot td { padding: 6px 10px; font-size: 12px; }
-	.items-table tfoot tr.total-row td { font-weight: 700; font-size: 13px; border-top: 2px solid #111; padding-top: 10px; }
-	.items-table .item-meta { font-size: 11px; color: #888; margin-top: 3px; }
-
-	/* Totals */
-	.totals-wrap { display: flex; justify-content: flex-end; }
-	.totals-table { width: 260px; }
-	.totals-table td { padding: 5px 10px; font-size: 12px; }
-	.totals-table td:last-child { text-align: right; }
-	.totals-table .grand-total td { font-weight: 700; font-size: 14px; border-top: 2px solid #111; padding-top: 8px; }
-
-	/* Status badge */
-	.payment-status { display: inline-block; padding: 4px 10px; border-radius: 3px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
-	.payment-status.paid    { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
-	.payment-status.pending { background: #fff8e1; color: #7c5500; border: 1px solid #ffe082; }
-	.payment-status.not-paid { background: #fdecea; color: #7f0000; border: 1px solid #ef9a9a; }
-
-	/* Footer */
-	.doc-footer { margin-top: 30px; border-top: 1px solid #e5e5e5; padding-top: 14px; text-align: center; font-size: 11px; color: #888; }
-
-	/* Print button (screen only) */
-	.print-bar { background: #1a1a1a; color: #fff; text-align: center; padding: 12px; position: sticky; top: 0; z-index: 999; }
-	.print-bar button { background: #fff; color: #1a1a1a; border: none; padding: 8px 24px; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 3px; }
-	.print-bar button:hover { background: #e0e0e0; }
-	@media print {
-		body { background: white; }
-		.print-bar { display: none; }
-		.irixfsl-doc { margin: 0; padding: 15mm 12mm; box-shadow: none; width: 100%; }
+	/* Floating print button (screen only) */
+	.print-bar { position: fixed; top: 16px; right: 16px; z-index: 999; }
+	.print-bar button {
+		padding: 9px 18px;
+		background: #18181b;
+		color: #fff;
+		border: 0;
+		border-radius: 8px;
+		font: 500 13px/1 inherit;
+		font-family: inherit;
+		cursor: pointer;
+		box-shadow: 0 4px 12px rgba(0,0,0,.15);
 	}
+	.print-bar button:hover { background: #3f3f46; }
+
+	/* Shared pieces */
+	.address-row { display: flex; gap: 32px; }
+	.address-box { flex: 1; }
+	.address-box h4 { margin-bottom: 6px; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; }
+	.address-box address { font-style: normal; font-size: 12px; line-height: 1.65; color: #3f3f46; }
+	.address-box address strong { color: #18181b; font-weight: 600; }
+
+	.items-table { width: 100%; border-collapse: collapse; }
+	.items-table thead th {
+		padding: 0 10px 8px;
+		border-bottom: 1px solid #e4e4e7;
+		background: none;
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: .08em;
+		text-transform: uppercase;
+		text-align: left;
+		color: #a1a1aa;
+	}
+	.items-table thead th:first-child,
+	.items-table tbody td:first-child { padding-left: 0; }
+	.items-table thead th:last-child,
+	.items-table tbody td:last-child { padding-right: 0; }
+	.items-table thead th.text-right { text-align: right; }
+	.items-table tbody td { padding: 11px 10px; font-size: 12px; border-bottom: 1px solid #f4f4f5; vertical-align: top; background: none; }
+	.items-table tbody td.text-right { text-align: right; font-variant-numeric: tabular-nums; }
+	.item-meta, .items-table .item-meta { margin-top: 3px; font-size: 11px; color: #a1a1aa; }
+
+	.doc-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #f4f4f5; text-align: center; font-size: 11px; color: #a1a1aa; }
+
+	@media print {
+		body { background: #fff; }
+		.print-bar { display: none; }
+		.irixfsl-doc { margin: 0; width: 100%; border-radius: 0; box-shadow: none; }
+	}
+
+	.irixfsl-doc { padding: 18mm 18mm 16mm; }
+
+	.doc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 36px; }
+	.doc-header .company-logo img { max-height: 48px; max-width: 180px; margin-bottom: 10px; }
+	.company-details { font-size: 12px; line-height: 1.65; color: #71717a; }
+	.company-details strong { display: block; margin-bottom: 2px; font-size: 14px; font-weight: 600; color: #18181b; }
+	.doc-header .doc-title { text-align: right; }
+	.doc-header .doc-title h1 { font-size: 22px; font-weight: 600; letter-spacing: -.01em; color: #18181b; }
+	.doc-header .doc-title .invoice-meta { margin-top: 8px; font-size: 12px; line-height: 1.8; color: #71717a; }
+	.doc-header .doc-title .invoice-meta strong { font-weight: 500; color: #3f3f46; }
+
+	.divider { display: none; }
+	.address-row { margin-bottom: 32px; }
+	.items-table { margin-bottom: 8px; }
+
+	.totals-wrap { display: flex; justify-content: flex-end; }
+	.totals-table { width: 280px; border-collapse: collapse; }
+	.totals-table td { padding: 6px 0; font-size: 12px; color: #71717a; }
+	.totals-table td:last-child { text-align: right; color: #18181b; font-variant-numeric: tabular-nums; }
+	.totals-table .grand-total td { padding-top: 12px; border-top: 1px solid #e4e4e7; font-size: 15px; font-weight: 600; color: #18181b; }
+
+	.payment-status {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 6px;
+		font-size: 11px;
+		font-weight: 500;
+		color: #3f3f46;
+	}
+	.payment-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #a1a1aa; }
+	.payment-status.paid::before     { background: #16a34a; }
+	.payment-status.pending::before  { background: #d97706; }
+	.payment-status.not-paid::before { background: #dc2626; }
 </style>
 </head>
 <body>
@@ -194,15 +231,14 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 				</tr>
 			</thead>
 			<tbody>
-				<?php foreach ( $items as $item ) :
+				<?php
+				// Line items are shown pre-discount, matching WC's own Subtotal row
+				// below; the coupon discount is listed separately in the totals.
+				$incl_tax = 'incl' === get_option( 'woocommerce_tax_display_cart' );
+				foreach ( $items as $item ) :
 					/** @var WC_Order_Item_Product $item */
 					$product  = $item->get_product();
 					$sku      = $product ? $product->get_sku() : '';
-					$qty   = $item->get_quantity();
-					$total = $item->get_total();
-					// Derive the unit price from the discounted line total so that
-					// unit × qty always equals the Total column, coupons included.
-					$unit  = $qty > 0 ? $total / $qty : 0;
 					?>
 					<tr>
 						<td>
@@ -210,9 +246,9 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 							<?php echo IRIXFSL_Helpers::render_item_meta( $item ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</td>
 						<td><?php echo esc_html( $sku ?: '—' ); ?></td>
-						<td class="text-right"><?php echo wp_kses_post( wc_price( $unit, [ 'currency' => $currency ] ) ); ?></td>
-						<td class="text-right"><?php echo esc_html( $qty ); ?></td>
-						<td class="text-right"><?php echo wp_kses_post( wc_price( $total, [ 'currency' => $currency ] ) ); ?></td>
+						<td class="text-right"><?php echo wp_kses_post( wc_price( $order->get_item_subtotal( $item, $incl_tax ), [ 'currency' => $currency ] ) ); ?></td>
+						<td class="text-right"><?php echo esc_html( $item->get_quantity() ); ?></td>
+						<td class="text-right"><?php echo wp_kses_post( $order->get_formatted_line_subtotal( $item ) ); ?></td>
 					</tr>
 				<?php endforeach; ?>
 			</tbody>
@@ -221,38 +257,17 @@ $render_invoice = function( WC_Order $order ) use ( $s, $logo_url ) {
 		<div class="totals-wrap">
 			<table class="totals-table">
 				<?php
-				$subtotal    = $order->get_subtotal();
-				$shipping    = $order->get_shipping_total();
-				$discount    = $order->get_discount_total();
-				$tax         = $order->get_total_tax();
-				$grand_total = $order->get_total();
-				?>
-				<tr>
-					<td><?php esc_html_e( 'Subtotal', 'irix-fulfillment-sl' ); ?></td>
-					<td><?php echo wp_kses_post( wc_price( $subtotal, [ 'currency' => $currency ] ) ); ?></td>
-				</tr>
-				<?php if ( $shipping > 0 ) : ?>
-				<tr>
-					<td><?php esc_html_e( 'Shipping', 'irix-fulfillment-sl' ); ?></td>
-					<td><?php echo wp_kses_post( wc_price( $shipping, [ 'currency' => $currency ] ) ); ?></td>
-				</tr>
-				<?php endif; ?>
-				<?php if ( $discount > 0 ) : ?>
-				<tr>
-					<td><?php esc_html_e( 'Discount', 'irix-fulfillment-sl' ); ?></td>
-					<td>-<?php echo wp_kses_post( wc_price( $discount, [ 'currency' => $currency ] ) ); ?></td>
-				</tr>
-				<?php endif; ?>
-				<?php if ( $tax > 0 ) : ?>
-				<tr>
-					<td><?php esc_html_e( 'Tax', 'irix-fulfillment-sl' ); ?></td>
-					<td><?php echo wp_kses_post( wc_price( $tax, [ 'currency' => $currency ] ) ); ?></td>
-				</tr>
-				<?php endif; ?>
-				<tr class="grand-total">
-					<td><?php esc_html_e( 'Total', 'irix-fulfillment-sl' ); ?></td>
-					<td><?php echo wp_kses_post( wc_price( $grand_total, [ 'currency' => $currency ] ) ); ?></td>
-				</tr>
+				// WC's canonical totals: subtotal, discount, shipping, every fee
+				// (incl. Local Delivery Fee), tax, total and refunds — always adds up.
+				$totals = $order->get_order_item_totals();
+				unset( $totals['payment_method'] ); // Already shown in the header.
+				foreach ( $totals as $key => $row ) :
+					?>
+					<tr<?php echo 'order_total' === $key ? ' class="grand-total"' : ''; ?>>
+						<td><?php echo esc_html( rtrim( wp_strip_all_tags( $row['label'] ), ': ' ) ); ?></td>
+						<td><?php echo wp_kses_post( $row['value'] ); ?></td>
+					</tr>
+				<?php endforeach; ?>
 			</table>
 		</div>
 

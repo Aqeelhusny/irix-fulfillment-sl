@@ -101,6 +101,15 @@ final class EmailTrackingTest extends TestCase {
 		$this->assertStringContainsString( 'shipped', $email->heading );
 	}
 
+	public function test_standard_send_after_local_delivery_resets_heading(): void {
+		$email = $this->make_email();
+		$email->trigger( 703, new WC_Order( 703 ), 'local_delivery' );
+		$email->trigger( 704, new WC_Order( 704 ), 'standard' );
+
+		$this->assertStringNotContainsString( 'out for delivery', $email->heading );
+		$this->assertStringContainsString( 'has been shipped', $email->subject );
+	}
+
 	// ── get_content_html() ──────────────────────────────────────────────
 
 	public function test_get_content_html_returns_empty_without_order(): void {

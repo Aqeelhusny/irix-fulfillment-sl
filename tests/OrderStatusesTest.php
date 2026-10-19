@@ -143,8 +143,12 @@ final class OrderStatusesTest extends TestCase {
 
 		$result = $this->instance()->add_bulk_actions( $actions );
 
-		$this->assertArrayHasKey( 'mark_ready_to_ship', $result );
-		$this->assertArrayHasKey( 'mark_shipped', $result );
+		$this->assertArrayHasKey( 'irixfsl_ready_to_ship', $result );
+		$this->assertArrayHasKey( 'irixfsl_shipped', $result );
+		// WC core hijacks any bulk action containing "mark_" and skips our checks.
+		foreach ( array_keys( $result ) as $key ) {
+			if ( $key !== 'trash' ) $this->assertStringNotContainsString( 'mark_', $key );
+		}
 		$this->assertArrayHasKey( 'trash', $result );
 	}
 
@@ -231,7 +235,7 @@ final class OrderStatusesTest extends TestCase {
 		$order->set_status( 'processing' );
 		$_irixfsl_test_orders = [ 400 => $order ];
 
-		$result = $this->instance()->handle_bulk_ready( 'https://example.com/admin', 'mark_ready_to_ship', [ 400 ] );
+		$result = $this->instance()->handle_bulk_ready( 'https://example.com/admin', 'irixfsl_ready_to_ship', [ 400 ] );
 
 		$this->assertStringContainsString( 'irixfsl_bulk_changed=1', $result );
 	}
@@ -247,7 +251,7 @@ final class OrderStatusesTest extends TestCase {
 		global $_irixfsl_test_orders;
 		$_irixfsl_test_orders = [ 401 => $order ];
 
-		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'mark_shipped', [ 401 ] );
+		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'irixfsl_shipped', [ 401 ] );
 
 		$this->assertStringContainsString( 'irixfsl_bulk_skipped=1', $result );
 	}
@@ -264,7 +268,7 @@ final class OrderStatusesTest extends TestCase {
 		global $_irixfsl_test_orders;
 		$_irixfsl_test_orders = [ 402 => $order ];
 
-		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'mark_shipped', [ 402 ] );
+		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'irixfsl_shipped', [ 402 ] );
 
 		$this->assertStringContainsString( 'irixfsl_bulk_changed=1', $result );
 	}
@@ -280,7 +284,7 @@ final class OrderStatusesTest extends TestCase {
 		global $_irixfsl_test_orders;
 		$_irixfsl_test_orders = [ 403 => $order ];
 
-		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'mark_shipped', [ 403 ] );
+		$result = $this->instance()->handle_bulk_shipped( 'https://example.com/admin', 'irixfsl_shipped', [ 403 ] );
 
 		$this->assertStringContainsString( 'irixfsl_bulk_changed=1', $result );
 	}
@@ -289,8 +293,44 @@ final class OrderStatusesTest extends TestCase {
 		global $_irixfsl_test_user_caps;
 		$_irixfsl_test_user_caps = []; // No capabilities.
 
-		$result = $this->instance()->handle_bulk_ready( 'https://example.com/admin', 'mark_ready_to_ship', [ 500 ] );
+		$result = $this->instance()->handle_bulk_ready( 'https://example.com/admin', 'irixfsl_ready_to_ship', [ 500 ] );
 
 		$this->assertSame( 'https://example.com/admin', $result );
+	}
+
+	// ── handle_bulk_actions() dispatch + real hook names ────────────────
+
+	public function test_registers_core_bulk_action_hooks(): void {
+		$GLOBALS['_irixfsl_test_hooks'] = [];
+		IRIXFSL_Order_Statuses::_reset_instance();
+		$this->instance();
+
+		$this->assertArrayHasKey( 'handle_bulk_actions-edit-shop_order', $GLOBALS['_irixfsl_test_hooks'] );
+		$this->assertArrayHasKey( 'handle_bulk_actions-woocommerce_page_wc-orders', $GLOBALS['_irixfsl_test_hooks'] );
+	}
+
+	public function test_handle_bulk_actions_dispatches_shipped(): void {
+		global $_irixfsl_test_user_caps, $_irixfsl_test_orders;
+		$_irixfsl_test_user_caps = [ 'manage_woocommerce' => true ];
+		$order = new WC_Order( 404 );
+		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'flat_rate' ) ] );
+		$_irixfsl_test_orders = [ 404 => $order ];
+
+		$result = $this->instance()->handle_bulk_actions( 'https://example.com/admin', 'irixfsl_shipped', [ 404 ] );
+
+		$this->assertStringContainsString( 'irixfsl_bulk_skipped=1', $result );
+		$this->assertSame( 'processing', $order->get_status() );
+	}
+
+	public function test_handle_bulk_actions_ignores_other_actions(): void {
+		$this->assertSame( 'https://x.test/', $this->instance()->handle_bulk_actions( 'https://x.test/', 'trash', [ 1 ] ) );
+	}
+
+	public function test_returned_excluded_from_analytics(): void {
+		$result = $this->instance()->exclude_returned_from_analytics( [ 'pending', 'failed', 'cancelled' ] );
+
+		$this->assertContains( 'returned', $result );
+		$this->assertContains( 'cancelled', $result );
+		$this->assertCount( 4, $this->instance()->exclude_returned_from_analytics( $result ) );
 	}
 }

@@ -1,157 +1,333 @@
-﻿/* ── Settings page ────────────────────────────────────────────── */
-.irixfsl-settings-wrap h2 {
-	margin: 24px 0 8px;
-}
-.irixfsl-settings-wrap .form-table th {
-	width: 200px;
-}
-.irixfsl-carriers-table {
-	margin-bottom: 12px;
-}
-.irixfsl-carriers-table th,
-.irixfsl-carriers-table td {
-	padding: 8px 12px;
-	vertical-align: middle;
-}
-.irixfsl-carriers-table tbody tr:hover td {
-	background: #f9f9f9;
-}
-.irixfsl-remove-carrier {
-	color: #b32d2e !important;
+/* IRIX Fulfillment SL — admin UI
+ *
+ * One quiet palette: neutral surfaces, hairline borders, colour only for
+ * status dots. The accent follows the user's WP admin colour scheme.
+ */
+:root {
+	--irixfsl-fg: #1e1e1e;
+	--irixfsl-muted: #6b6b6b;
+	--irixfsl-faint: #949494;
+	--irixfsl-border: #e4e4e7;
+	--irixfsl-subtle: #f7f7f8;
+	--irixfsl-surface: #fff;
+	--irixfsl-accent: var(--wp-admin-theme-color, #3858e9);
+	--irixfsl-ok: #16a34a;
+	--irixfsl-warn: #d97706;
+	--irixfsl-danger: #dc2626;
+	--irixfsl-radius: 8px;
 }
 
-/* ── Documents meta box (order edit sidebar) ─────────────────── */
-.irixfsl-doc-buttons {
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
-}
-
-.irixfsl-doc-btn.button {
-	display: inline-flex !important;
-	flex-direction: row !important;
-	flex-wrap: nowrap !important;
-	align-items: center !important;
-	justify-content: center;
-	gap: 5px;
-	width: 100%;
-	box-sizing: border-box;
-	padding: 6px 12px !important;
-	height: auto !important;
-	line-height: 1.4 !important;
-	font-size: 13px !important;
-	white-space: nowrap;
-	text-align: center;
-}
-
-.irixfsl-doc-btn .dashicons {
-	display: inline-block !important;
-	flex-shrink: 0;
-	font-size: 15px !important;
-	width: 15px !important;
-	height: 15px !important;
-	line-height: 15px !important;
-	position: relative;
-	top: 0;
-	margin: 0;
-}
-
-.irixfsl-doc-unsaved {
-	color: #757575;
-	font-style: italic;
+/* ── Shared field styling (meta boxes + settings) ────────────── */
+.irixfsl-field { margin: 0 0 14px; }
+.irixfsl-field > label {
+	display: block;
+	margin-bottom: 6px;
 	font-size: 12px;
+	font-weight: 500;
+	color: var(--irixfsl-fg);
+}
+.irixfsl-field select,
+.irixfsl-field input[type="text"],
+.irixfsl-field input[type="url"] { width: 100%; max-width: none; }
+.irixfsl-field .description {
+	display: block;
+	margin-top: 6px;
+	font-size: 12px;
+	color: var(--irixfsl-muted);
+}
+.irixfsl-optional { margin-left: 4px; font-weight: 400; color: var(--irixfsl-faint); }
+.irixfsl-readonly { display: block; padding: 2px 0 4px; color: var(--irixfsl-fg); }
+#irixfsl_tracking_number { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .02em; }
+
+.irixfsl-field select,
+.irixfsl-field input[type="text"],
+.irixfsl-field input[type="url"],
+.irixfsl-settings-wrap input[type="text"],
+.irixfsl-settings-wrap input[type="email"],
+.irixfsl-settings-wrap input[type="url"],
+.irixfsl-settings-wrap input[type="number"],
+.irixfsl-settings-wrap input[type="password"],
+.irixfsl-settings-wrap textarea,
+.irixfsl-settings-wrap select {
+	border-color: var(--irixfsl-border);
+	border-radius: 6px;
+	box-shadow: none;
+}
+.irixfsl-field select:focus,
+.irixfsl-field input:focus,
+.irixfsl-settings-wrap input:focus,
+.irixfsl-settings-wrap textarea:focus,
+.irixfsl-settings-wrap select:focus {
+	border-color: var(--irixfsl-accent);
+	box-shadow: 0 0 0 1px var(--irixfsl-accent);
 }
 
-/* ── Documents column (orders list) ──────────────────────────── */
-.column-irixfsl_documents {
-	width: 100px !important;
-}
-
-/* Constrain cell so links don't inherit table-cell stretching */
-td.irixfsl_documents {
-	vertical-align: middle;
-}
-
-.irixfsl-list-doc-links {
-	display: inline-flex;
-	flex-direction: column;
+/* ── Callouts: neutral surface, colour only on the icon ───────── */
+.irixfsl-callout {
+	display: flex;
+	gap: 10px;
 	align-items: flex-start;
-	gap: 5px;
+	padding: 10px 12px;
+	margin: 0 0 14px;
+	background: var(--irixfsl-subtle);
+	border-radius: var(--irixfsl-radius);
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--irixfsl-muted);
 }
+.irixfsl-callout strong { display: block; color: var(--irixfsl-fg); font-weight: 500; }
+.irixfsl-callout p { margin: 2px 0 0; font-size: 12px; }
+.irixfsl-callout .dashicons { flex-shrink: 0; font-size: 18px; width: 18px; height: 18px; line-height: 1; color: var(--irixfsl-faint); }
+.irixfsl-callout--success .dashicons { color: var(--irixfsl-ok); }
+.irixfsl-callout--warning .dashicons { color: var(--irixfsl-warn); }
 
-.irixfsl-list-link {
+/* ── Status: dot + text ──────────────────────────────────────── */
+.irixfsl-status-row { margin: 2px 0 12px; }
+.irixfsl-pill {
 	display: inline-flex;
 	align-items: center;
-	gap: 4px;
-	font-size: 11px;
-	font-weight: 500;
-	text-decoration: none;
-	padding: 3px 8px 3px 6px;
-	border-radius: 3px;
-	line-height: 1.3;
-	white-space: nowrap;
-}
-
-.irixfsl-list-link .dashicons {
-	flex-shrink: 0;
+	gap: 6px;
 	font-size: 12px;
-	width: 12px;
-	height: 12px;
-	line-height: 12px;
-	position: relative;
-	top: -1px;
+	color: var(--irixfsl-muted);
 }
+.irixfsl-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--irixfsl-faint);
+	flex-shrink: 0;
+}
+.irixfsl-pill--sent .irixfsl-dot { background: var(--irixfsl-ok); }
+.irixfsl-pill--queued .irixfsl-dot { background: var(--irixfsl-accent); animation: irixfsl-pulse 1.6s ease-in-out infinite; }
+.irixfsl-pill--sent { color: var(--irixfsl-fg); }
+@keyframes irixfsl-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .irixfsl-pill--queued .irixfsl-dot { animation: none; } }
 
-.irixfsl-list-link--invoice {
-	background: #e7f0ff;
-	color: #2271b1;
-	border: 1px solid #c5d9f7;
+.irixfsl-meta-line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 12px;
+	font-size: 12px;
+	color: var(--irixfsl-muted);
 }
-.irixfsl-list-link--invoice:hover {
-	background: #d0e3ff;
-	color: #135e96;
-	border-color: #a8c7f5;
-}
+.irixfsl-meta-line .dashicons { font-size: 14px; width: 14px; height: 14px; line-height: 1; color: var(--irixfsl-faint); }
 
-.irixfsl-list-link--slip {
-	background: #f0f0f0;
-	color: #3c434a;
-	border: 1px solid #dcdcde;
+/* ── Quiet secondary buttons ─────────────────────────────────── */
+.irixfsl-actions { display: flex; flex-direction: column; gap: 6px; }
+.wp-core-ui .irixfsl-actions .button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	width: 100%;
+	background: var(--irixfsl-surface);
+	border-color: var(--irixfsl-border);
+	border-radius: 6px;
+	color: var(--irixfsl-fg);
+	box-shadow: none;
 }
-.irixfsl-list-link--slip:hover {
-	background: #e2e2e2;
-	color: #1d2327;
+.wp-core-ui .irixfsl-actions .button:hover:not(:disabled) {
+	background: var(--irixfsl-subtle);
+	border-color: #d4d4d8;
+	color: var(--irixfsl-fg);
 }
+.wp-core-ui .irixfsl-actions .button:focus {
+	border-color: var(--irixfsl-accent);
+	box-shadow: 0 0 0 1px var(--irixfsl-accent);
+}
+.irixfsl-actions .button .dashicons { font-size: 16px; width: 16px; height: 16px; line-height: 1; color: var(--irixfsl-muted); }
 
-.irixfsl-list-link--waybill {
-	background: #fff3e0;
-	color: #7c4700;
-	border: 1px solid #f0c080;
+/* ── Documents meta box ──────────────────────────────────────── */
+.irixfsl-doc-list { margin: -4px 0 0; padding: 0; list-style: none; }
+.irixfsl-doc-list li { margin: 0; border-bottom: 1px solid var(--irixfsl-border); }
+.irixfsl-doc-list li:last-child { border-bottom: 0; }
+.irixfsl-doc-link {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 4px;
+	color: var(--irixfsl-fg);
+	text-decoration: none;
+	border-radius: 6px;
 }
-.irixfsl-list-link--waybill:hover {
-	background: #ffe0b2;
-	color: #5c3300;
-	border-color: #e8a040;
-}
+a.irixfsl-doc-link:hover { color: var(--irixfsl-accent); background: var(--irixfsl-subtle); }
+a.irixfsl-doc-link:focus { box-shadow: 0 0 0 2px var(--irixfsl-accent); outline: none; }
+.irixfsl-doc-link .dashicons { font-size: 18px; width: 18px; height: 18px; line-height: 1; color: var(--irixfsl-muted); }
+a.irixfsl-doc-link:hover .dashicons { color: inherit; }
+.irixfsl-doc-link__label { flex: 1; font-size: 13px; }
+.irixfsl-doc-link__label small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.4; color: var(--irixfsl-faint); }
+.irixfsl-doc-link__go { opacity: 0; transition: opacity .15s; }
+a.irixfsl-doc-link:hover .irixfsl-doc-link__go,
+a.irixfsl-doc-link:focus .irixfsl-doc-link__go { opacity: 1; }
+.irixfsl-doc-link.is-disabled { color: var(--irixfsl-faint); cursor: not-allowed; }
+.irixfsl-doc-link.is-disabled .dashicons { color: #c4c4c4; }
+.irixfsl-doc-unsaved { color: var(--irixfsl-muted); font-size: 12px; }
 
-/* ── Order status badge colors ───────────────────────────────── */
-.order-status.status-ready-to-ship,
-mark.order-status.status-ready-to-ship { background: #cb2f2f; color: #fff; }
-.order-status.status-shipped,
-mark.order-status.status-shipped        { background: #fef9e1; color: #9a6800; }
+/* ── Orders list: icon-only document links ───────────────────── */
+.column-irixfsl_documents { width: 112px; }
+.irixfsl-icon-links { display: flex; gap: 4px; }
+.irixfsl-icon-link {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border: 1px solid var(--irixfsl-border);
+	border-radius: 6px;
+	background: var(--irixfsl-surface);
+	color: var(--irixfsl-muted);
+	text-decoration: none;
+}
+.irixfsl-icon-link:hover { color: var(--irixfsl-accent); border-color: currentColor; }
+.irixfsl-icon-link:focus { color: var(--irixfsl-accent); box-shadow: 0 0 0 1px var(--irixfsl-accent); outline: none; }
+.irixfsl-icon-link .dashicons { font-size: 16px; width: 16px; height: 16px; line-height: 1; }
 
-/* Waybill button in Documents meta box */
-.irixfsl-doc-btn--waybill {
-	background: #fff3e0 !important;
-	border-color: #e8a040 !important;
-	color: #7c4700 !important;
+/* ── Order status badges (soft tint, WooCommerce pattern) ────── */
+mark.order-status.status-ready-to-ship { background: #ede9fe; color: #5b21b6; }
+mark.order-status.status-shipped       { background: #e0f2fe; color: #075985; }
+mark.order-status.status-returned      { background: #ffedd5; color: #9a3412; }
+
+/* ── Settings page ───────────────────────────────────────────── */
+.irixfsl-settings-wrap { max-width: 1040px; }
+.irixfsl-settings-wrap > h1 { margin-bottom: 16px; font-weight: 600; }
+
+.irixfsl-settings-wrap .irixfsl-tabs {
+	display: flex;
+	gap: 24px;
+	margin: 0 0 20px;
+	padding: 0;
+	border-bottom: 1px solid var(--irixfsl-border);
 }
-.irixfsl-doc-btn--waybill:hover {
-	background: #ffe0b2 !important;
-	border-color: #c97c10 !important;
-	color: #5c3300 !important;
+.irixfsl-settings-wrap .irixfsl-tabs .nav-tab {
+	margin: 0 0 -1px;
+	padding: 10px 0;
+	background: none;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--irixfsl-muted);
 }
-.irixfsl-doc-btn--waybill-disabled {
-	opacity: 0.5;
-	cursor: not-allowed !important;
+.irixfsl-settings-wrap .irixfsl-tabs .nav-tab:hover { color: var(--irixfsl-fg); }
+.irixfsl-settings-wrap .irixfsl-tabs .nav-tab:focus { box-shadow: none; outline: 2px solid var(--irixfsl-accent); outline-offset: 2px; }
+.irixfsl-settings-wrap .irixfsl-tabs .nav-tab-active,
+.irixfsl-settings-wrap .irixfsl-tabs .nav-tab-active:hover {
+	color: var(--irixfsl-fg);
+	border-bottom-color: var(--irixfsl-accent);
+	background: none;
 }
+.irixfsl-tabs-ready .irixfsl-tab-panel:not(.is-active) { display: none; }
+
+.irixfsl-tab-panel {
+	margin-bottom: 20px;
+	padding: 4px 24px 20px;
+	background: var(--irixfsl-surface);
+	border: 1px solid var(--irixfsl-border);
+	border-radius: 12px;
+}
+.irixfsl-settings-wrap .irixfsl-tab-panel h2 { margin: 20px 0 4px; font-size: 15px; font-weight: 600; }
+.irixfsl-settings-wrap .irixfsl-tab-panel h3 { margin: 24px 0 4px; font-size: 13px; font-weight: 600; }
+.irixfsl-settings-wrap .irixfsl-tab-panel > br { display: none; }
+.irixfsl-settings-wrap .description { color: var(--irixfsl-muted); }
+.irixfsl-settings-wrap .form-table th { width: 200px; padding-left: 0; font-weight: 500; }
+.irixfsl-settings-wrap .form-table tr + tr th,
+.irixfsl-settings-wrap .form-table tr + tr td { border-top: 1px solid var(--irixfsl-border); }
+
+/* Repeater tables (carriers, local delivery) */
+.irixfsl-settings-wrap .widefat {
+	margin: 12px 0;
+	border: 0;
+	box-shadow: none;
+	background: none;
+}
+.irixfsl-settings-wrap .widefat thead th {
+	padding: 8px 12px 8px 0;
+	border-bottom: 1px solid var(--irixfsl-border);
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--irixfsl-muted);
+}
+.irixfsl-settings-wrap .widefat td { padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid var(--irixfsl-border); }
+.irixfsl-settings-wrap .widefat tr:last-child td { border-bottom: 0; }
+.irixfsl-settings-wrap .widefat td:last-child { width: 1%; padding-right: 0; white-space: nowrap; }
+.irixfsl-carriers-table th:first-child { width: 30%; }
+.irixfsl-carriers-table input.regular-text,
+.irixfsl-carriers-table input.large-text { width: 100%; }
+.irixfsl-local-delivery-table th:nth-child(1) { width: 28%; }
+.irixfsl-local-delivery-table th:nth-child(2) { width: 36%; }
+.irixfsl-local-delivery-table input.regular-text,
+.irixfsl-local-delivery-table select.regular-text { width: 100%; max-width: none; }
+
+/* Remove = quiet text button; Add = dashed ghost button */
+.wp-core-ui .irixfsl-remove-carrier,
+.wp-core-ui .irixfsl-remove-local-delivery {
+	background: none;
+	border-color: transparent;
+	box-shadow: none;
+	color: var(--irixfsl-muted);
+}
+.wp-core-ui .irixfsl-remove-carrier:hover,
+.wp-core-ui .irixfsl-remove-local-delivery:hover {
+	background: #fef2f2;
+	border-color: transparent;
+	color: var(--irixfsl-danger);
+}
+.wp-core-ui #irixfsl-add-carrier,
+.wp-core-ui #irixfsl-add-local-delivery {
+	background: none;
+	border: 1px dashed #d4d4d8;
+	border-radius: 6px;
+	color: var(--irixfsl-muted);
+	box-shadow: none;
+}
+.wp-core-ui #irixfsl-add-carrier:hover,
+.wp-core-ui #irixfsl-add-local-delivery:hover { border-color: var(--irixfsl-accent); color: var(--irixfsl-accent); }
+
+.irixfsl-row-warning {
+	display: flex;
+	gap: 6px;
+	margin: 6px 0 0;
+	font-size: 12px;
+	line-height: 1.45;
+	color: var(--irixfsl-muted);
+}
+.irixfsl-row-warning .dashicons { flex-shrink: 0; font-size: 16px; width: 16px; height: 16px; line-height: 1; color: var(--irixfsl-danger); }
+
+#irixfsl-logo-preview { border-radius: 6px; }
+.irixfsl-settings-wrap .submit { padding-top: 0; }
+
+/* ── Return / refund reason modal ────────────────────────────── */
+.irixfsl-modal-overlay:not([hidden]) {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(15, 15, 15, .35);
+	backdrop-filter: blur(2px);
+}
+.irixfsl-modal {
+	width: 100%;
+	max-width: 440px;
+	padding: 24px;
+	background: var(--irixfsl-surface);
+	border-radius: 12px;
+	box-shadow: 0 20px 50px rgba(0, 0, 0, .18);
+}
+.irixfsl-modal h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+.irixfsl-modal-desc { margin: 0 0 16px; font-size: 13px; color: var(--irixfsl-muted); }
+.irixfsl-modal textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 10px 12px;
+	border: 1px solid var(--irixfsl-border);
+	border-radius: 8px;
+	box-shadow: none;
+}
+.irixfsl-modal textarea:focus { border-color: var(--irixfsl-accent); box-shadow: 0 0 0 1px var(--irixfsl-accent); }
+.irixfsl-modal-error { margin: 8px 0 0; font-size: 12px; color: var(--irixfsl-danger); }
+.irixfsl-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.wp-core-ui .irixfsl-modal-actions .button { border-radius: 6px; }

@@ -63,7 +63,8 @@
 		var barH    = opts.height      || 80;
 		var quiet   = opts.quiet       || 20;
 
-		var bits   = encode128B(String(text).toUpperCase());
+		// Code 128B encodes lower case — never alter the tracking number.
+		var bits   = encode128B(String(text));
 		var totalW = bits.length * moduleW + quiet * 2;
 
 		canvas.width  = totalW;

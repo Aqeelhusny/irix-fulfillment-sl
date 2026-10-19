@@ -42,6 +42,7 @@ final class IRIXFSL_Waybill {
 		$print_url      = IRIXFSL_URL . 'assets/css/print.css';
 		$scan_url       = $s['waybill_scan_url'] ?? '';
 
+		nocache_headers(); // Personal data — keep out of page/CDN caches.
 		include IRIXFSL_DIR . 'templates/waybill.php';
 		exit;
 	}

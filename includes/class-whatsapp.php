@@ -13,12 +13,17 @@ final class IRIXFSL_Whatsapp {
 
 	const META_SENT = '_irixfsl_whatsapp_sent';
 
-	const API_VERSION = 'v20.0';
+	/** Meta Graph API version — each is supported ~2 years; v25.0 until July 2028. */
+	const API_VERSION = 'v25.0';
 
 	protected function boot(): void {
 		add_action( 'add_meta_boxes',                   [ $this, 'add_meta_box' ] );
 		add_action( 'admin_enqueue_scripts',            [ $this, 'enqueue_assets' ] );
-		add_action( 'woocommerce_order_status_shipped', [ $this, 'maybe_send_shipped_message' ] );
+		// Priority 20: after IRIXFSL_Order_Statuses::enforce_tracking_for_shipped (10)
+		// has had a chance to revert the order. woocommerce_order_status_shipped
+		// fires before that guard, so it would message orders that get reverted.
+		add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 20, 4 );
+		add_action( 'irixfsl_send_whatsapp',            [ $this, 'maybe_send_shipped_message' ] );
 		add_action( 'wp_ajax_irixfsl_resend_whatsapp',  [ $this, 'ajax_resend' ] );
 	}
 
@@ -31,7 +36,8 @@ final class IRIXFSL_Whatsapp {
 			'i18n' => [
 				'sending' => __( 'Sending…', 'irix-fulfillment-sl' ),
 				'sent'    => __( 'Message Sent!', 'irix-fulfillment-sl' ),
-				'retry'   => __( 'Retry', 'irix-fulfillment-sl' ),
+				'retry'    => __( 'Retry', 'irix-fulfillment-sl' ),
+				'sentPill' => __( 'WhatsApp sent', 'irix-fulfillment-sl' ),
 			],
 		] );
 	}
@@ -61,33 +67,49 @@ final class IRIXFSL_Whatsapp {
 			&& $settings['whatsapp_template_name'] !== '';
 
 		if ( ! $configured ) {
-			echo '<p style="color:#555;font-size:12px">'
-				. esc_html__( 'WhatsApp notifications are not configured yet.', 'irix-fulfillment-sl' )
-				. ' <a href="' . esc_url( admin_url( 'admin.php?page=irixfsl-settings' ) ) . '">'
+			echo '<div class="irixfsl-callout irixfsl-callout--muted">'
+				. '<span class="dashicons dashicons-format-chat" aria-hidden="true"></span>'
+				. '<div><p>' . esc_html__( 'WhatsApp notifications are not configured yet.', 'irix-fulfillment-sl' )
+				. ' <a href="' . esc_url( admin_url( 'admin.php?page=irixfsl-settings#whatsapp' ) ) . '">'
 				. esc_html__( 'Set it up in Settings', 'irix-fulfillment-sl' )
-				. '</a>.</p>';
+				. '</a></p></div></div>';
 			return;
 		}
 
-		$sent = $order->get_meta( self::META_SENT );
+		$sent  = $order->get_meta( self::META_SENT );
+		$state = $sent ? 'sent' : ( as_next_scheduled_action( 'irixfsl_send_whatsapp', [ $order->get_id() ], 'irix-fulfillment-sl' ) ? 'queued' : 'none' );
+		$label = [
+			'sent'   => __( 'WhatsApp sent', 'irix-fulfillment-sl' ),
+			'queued' => __( 'Queued — sending shortly', 'irix-fulfillment-sl' ),
+			'none'   => __( 'Not sent yet', 'irix-fulfillment-sl' ),
+		][ $state ];
+		$phone = $order->get_billing_phone();
 		?>
-		<p>
-			<?php if ( $sent ) : ?>
-				<span style="color:#1a7a2a">&#10003; <?php esc_html_e( 'Sent', 'irix-fulfillment-sl' ); ?></span>
-			<?php else : ?>
-				<span style="color:#888"><?php esc_html_e( 'Not sent yet', 'irix-fulfillment-sl' ); ?></span>
-			<?php endif; ?>
+		<div class="irixfsl-status-row">
+			<?php echo IRIXFSL_Helpers::status_pill( $state, $label ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in helper ?>
+		</div>
+		<p class="irixfsl-meta-line">
+			<span class="dashicons dashicons-phone" aria-hidden="true"></span>
+			<?php echo $phone !== '' ? esc_html( $phone ) : esc_html__( 'No billing phone on this order', 'irix-fulfillment-sl' ); ?>
 		</p>
-		<p>
-			<button type="button" class="button button-secondary" id="irixfsl-resend-whatsapp" data-order="<?php echo esc_attr( $order->get_id() ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'irixfsl_resend_whatsapp' ) ); ?>">
-				<?php $sent ? esc_html_e( 'Resend WhatsApp Message', 'irix-fulfillment-sl' ) : esc_html_e( 'Send WhatsApp Message', 'irix-fulfillment-sl' ); ?>
+		<div class="irixfsl-actions">
+			<button type="button" class="button" id="irixfsl-resend-whatsapp" data-order="<?php echo esc_attr( $order->get_id() ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'irixfsl_resend_whatsapp' ) ); ?>" <?php disabled( $phone === '' ); ?>>
+				<span class="dashicons dashicons-format-chat" aria-hidden="true"></span>
+				<span class="irixfsl-btn-label"><?php $sent ? esc_html_e( 'Resend WhatsApp', 'irix-fulfillment-sl' ) : esc_html_e( 'Send WhatsApp', 'irix-fulfillment-sl' ); ?></span>
 			</button>
-		</p>
+		</div>
 		<?php
 	}
 
+	public function on_status_changed( int $order_id, string $from, string $to, WC_Order $order ): void {
+		// has_status() reflects a revert made earlier in this same hook.
+		if ( $to !== 'shipped' || ! $order->has_status( 'shipped' ) ) return;
+		// Sent in the background so a slow Meta API never stalls the order save.
+		as_enqueue_async_action( 'irixfsl_send_whatsapp', [ $order_id ], 'irix-fulfillment-sl', true );
+	}
+
 	/**
-	 * Hooked to woocommerce_order_status_shipped — auto-sends once, skipping
+	 * Action Scheduler callback for a settled Shipped order — sends once, skipping
 	 * silently if the feature isn't enabled/configured or already sent.
 	 */
 	public function maybe_send_shipped_message( int $order_id ): void {
@@ -159,7 +181,11 @@ final class IRIXFSL_Whatsapp {
 		];
 
 		$response = wp_remote_post(
-			sprintf( 'https://graph.facebook.com/%s/%s/messages', self::API_VERSION, rawurlencode( $phone_number_id ) ),
+			sprintf(
+				'https://graph.facebook.com/%s/%s/messages',
+				apply_filters( 'irixfsl_whatsapp_api_version', self::API_VERSION ),
+				rawurlencode( $phone_number_id )
+			),
 			[
 				'headers' => [
 					'Authorization' => 'Bearer ' . $access_token,

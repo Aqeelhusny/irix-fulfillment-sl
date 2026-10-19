@@ -116,4 +116,17 @@ final class IRIXFSL_Helpers {
 
 		return $html;
 	}
+
+	/**
+	 * Small status badge used in the order-screen meta boxes.
+	 *
+	 * @param string $state 'sent' | 'queued' | 'none'
+	 */
+	public static function status_pill( string $state, string $label ): string {
+		return sprintf(
+			'<span class="irixfsl-pill irixfsl-pill--%1$s"><span class="irixfsl-dot" aria-hidden="true"></span>%2$s</span>',
+			esc_attr( $state ),
+			esc_html( $label )
+		);
+	}
 }

@@ -29,7 +29,7 @@ final class TrackingTest extends TestCase {
 	/**
 	 * IRIXFSL_Tracking::$tracking_saved is a private static flag that survives
 	 * across tests in the same process (PHPUnit doesn't reload the class) —
-	 * reset it via reflection so save_meta()/hpos_save_meta() aren't silently
+	 * reset it via reflection so save_meta() isn't silently
 	 * short-circuited by a previous test.
 	 */
 	private function resetTrackingSavedFlag(): void {
@@ -217,7 +217,7 @@ final class TrackingTest extends TestCase {
 		$this->assertSame( 'standard', IRIXFSL_Tracking::get_fulfillment_type( $order ) );
 	}
 
-	// ── maybe_apply_local_delivery_fee() (via hpos_save_meta) ────────────
+	// ── maybe_apply_local_delivery_fee() (via save_meta) ────────────
 
 	private function withTrackingNonce(): void {
 		$_POST['irixfsl_tracking_nonce'] = wp_create_nonce( 'irixfsl_tracking_save' );
@@ -236,7 +236,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->hpos_save_meta( $order );
+		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$items = $order->get_items();
 		$this->assertCount( 1, $items );
@@ -246,6 +246,25 @@ final class TrackingTest extends TestCase {
 		$this->assertTrue( $order->was_calculate_totals_called() );
 		$this->assertSame( 1, $order->get_save_call_count() );
 		$this->assertSame( '1', $order->get_meta( IRIXFSL_Tracking::META_LOCAL_DELIVERY_FEE_APPLIED ) );
+	}
+
+	public function test_does_not_apply_fee_once_order_has_shipped(): void {
+		global $_irixfsl_test_options;
+		$_irixfsl_test_options[ IRIXFSL_Settings::OPTION_KEY ] = [
+			'local_delivery_methods' => [
+				[ 'name' => 'XYZ Courier', 'method_id' => 'my_delivery', 'fee' => '250' ],
+			],
+		];
+		IRIXFSL_Settings::flush_cache();
+
+		$order = new WC_Order( 509 );
+		$order->set_status( 'completed' );
+		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
+		$this->withTrackingNonce();
+
+		IRIXFSL_Tracking::instance()->save_meta( $order );
+
+		$this->assertSame( [], $order->get_items() );
 	}
 
 	public function test_does_not_reapply_fee_when_already_applied(): void {
@@ -262,7 +281,7 @@ final class TrackingTest extends TestCase {
 		$order->update_meta_data( IRIXFSL_Tracking::META_LOCAL_DELIVERY_FEE_APPLIED, '1' );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->hpos_save_meta( $order );
+		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -281,7 +300,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->hpos_save_meta( $order );
+		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -300,7 +319,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'flat_rate' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->hpos_save_meta( $order );
+		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -481,8 +500,52 @@ final class TrackingTest extends TestCase {
 		$this->withTrackingNonce();
 		$_POST['irixfsl_carrier'] = 'FedEx';
 
-		IRIXFSL_Tracking::instance()->hpos_save_meta( $order );
+		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$this->assertSame( 'FedEx', $order->get_meta( IRIXFSL_Tracking::META_CARRIER ) );
+	}
+
+	// ── on_status_changed() → background email ──────────────────────────
+
+	public function test_status_changed_queues_email_when_order_stays_shipped(): void {
+		$GLOBALS['_irixfsl_test_async'] = [];
+		$order = new WC_Order( 720 );
+		$order->set_status( 'shipped' );
+
+		IRIXFSL_Tracking::instance()->on_status_changed( 720, 'processing', 'shipped', $order );
+
+		$this->assertSame( [ [ 'irixfsl_send_tracking_email', [ 720 ] ] ], $GLOBALS['_irixfsl_test_async'] );
+	}
+
+	public function test_status_changed_skips_order_reverted_by_tracking_guard(): void {
+		$GLOBALS['_irixfsl_test_async'] = [];
+		$order = new WC_Order( 721 ); // Guard already reverted shipped -> processing.
+
+		IRIXFSL_Tracking::instance()->on_status_changed( 721, 'processing', 'shipped', $order );
+
+		$this->assertSame( [], $GLOBALS['_irixfsl_test_async'] );
+	}
+
+	// ── Status pill ─────────────────────────────────────────────────────
+
+	public function test_status_pill_escapes_and_maps_icon(): void {
+		$html = \IRIXFSL_Helpers::status_pill( 'queued', '<b>Queued</b>' );
+		$this->assertStringContainsString( 'irixfsl-pill--queued', $html );
+		$this->assertStringContainsString( 'irixfsl-dot', $html );
+		$this->assertStringNotContainsString( '<b>', $html );
+	}
+
+	public function test_meta_box_shows_queued_while_email_pending(): void {
+		$GLOBALS['_irixfsl_test_async'] = [ [ 'irixfsl_send_tracking_email', [ 730 ] ] ];
+		$order = new WC_Order( 730 );
+		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'flat_rate' ) ] );
+		$order->update_meta_data( IRIXFSL_Tracking::META_NUMBER, 'TRK1' );
+
+		ob_start();
+		IRIXFSL_Tracking::instance()->render_meta_box( $order );
+		$html = ob_get_clean();
+		$GLOBALS['_irixfsl_test_async'] = [];
+
+		$this->assertStringContainsString( 'irixfsl-pill--queued', $html );
 	}
 }

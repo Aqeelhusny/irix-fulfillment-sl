@@ -120,7 +120,9 @@ final class CustomerPortalTest extends TestCase {
 		$result = $this->instance()->add_order_actions( $actions, $order );
 
 		$this->assertArrayHasKey( 'irixfsl_track', $result );
-		$this->assertStringContainsString( 'track-order', $result['irixfsl_track']['url'] );
+		$url = $result['irixfsl_track']['url'];
+		$this->assertStringContainsString( 'track-order/603/', $url );
+		$this->assertStringContainsString( 'order_key=' . $order->get_order_key(), $url );
 	}
 
 	public function test_add_order_actions_preserves_existing_actions(): void {
@@ -133,5 +135,29 @@ final class CustomerPortalTest extends TestCase {
 
 		$this->assertArrayHasKey( 'view', $result );
 		$this->assertArrayHasKey( 'irixfsl_invoice', $result );
+	}
+
+	// ── progress_steps() ────────────────────────────────────────────────
+
+	public function test_progress_steps_track_status_and_fulfillment_wording(): void {
+		$order = new WC_Order( 610 );
+		$order->set_status( 'ready-to-ship' );
+		$order->set_shipping_methods( [ new \WC_Order_Item_Shipping( 'flat_rate' ) ] );
+		[ $steps, $current ] = IRIXFSL_Customer_Portal::progress_steps( $order );
+		$this->assertSame( 2, $current );
+		$this->assertSame( 'Shipped', $steps[3] );
+
+		$order->set_shipping_methods( [ new \WC_Order_Item_Shipping( 'local_pickup' ) ] );
+		$order->set_status( 'completed' );
+		[ $steps, $current ] = IRIXFSL_Customer_Portal::progress_steps( $order );
+		$this->assertSame( 4, $current );
+		$this->assertSame( 'Ready for pickup', $steps[3] );
+		$this->assertSame( 'Collected', $steps[4] );
+	}
+
+	public function test_progress_steps_hidden_for_orders_out_of_flow(): void {
+		$order = new WC_Order( 611 );
+		$order->set_status( 'returned' );
+		$this->assertSame( -1, IRIXFSL_Customer_Portal::progress_steps( $order )[1] );
 	}
 }

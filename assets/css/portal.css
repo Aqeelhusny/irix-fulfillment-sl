@@ -1,0 +1,133 @@
+/* My Account → Track Order.
+ * Minimal and theme-neutral: inherits the theme's font and text colour,
+ * uses hairline borders and one accent (the theme's text colour). */
+.irixfsl-tracking-info {
+	--irixfsl-line: rgba(0, 0, 0, .1);
+	--irixfsl-soft: rgba(0, 0, 0, .55);
+	padding: 1.5em;
+	border: 1px solid var(--irixfsl-line);
+	border-radius: 12px;
+}
+.irixfsl-tracking-info + .irixfsl-tracking-info { margin-top: 1.5em; }
+
+.irixfsl-tracking-title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .6em;
+	margin: 0 0 1.25em;
+	font-size: 1.25em;
+	font-weight: 600;
+}
+.irixfsl-tracking-title mark.order-status {
+	display: inline-flex;
+	align-items: center;
+	gap: .45em;
+	padding: 0;
+	background: none;
+	font-size: .65em;
+	font-weight: 500;
+	color: var(--irixfsl-soft);
+}
+.irixfsl-tracking-title mark.order-status::before {
+	content: "";
+	width: .6em;
+	height: .6em;
+	border-radius: 50%;
+	background: #a3a3a3;
+}
+.irixfsl-tracking-title mark.status-processing::before,
+.irixfsl-tracking-title mark.status-completed::before     { background: #16a34a; }
+.irixfsl-tracking-title mark.status-ready-to-ship::before { background: #7c3aed; }
+.irixfsl-tracking-title mark.status-shipped::before       { background: #0284c7; }
+.irixfsl-tracking-title mark.status-on-hold::before       { background: #d97706; }
+.irixfsl-tracking-title mark.status-returned::before,
+.irixfsl-tracking-title mark.status-cancelled::before,
+.irixfsl-tracking-title mark.status-refunded::before,
+.irixfsl-tracking-title mark.status-failed::before        { background: #dc2626; }
+
+/* Progress tracker */
+.irixfsl-progress {
+	display: flex;
+	margin: 0 0 1.75em;
+	padding: 0;
+	list-style: none;
+}
+.irixfsl-progress__step {
+	position: relative;
+	flex: 1;
+	margin: 0;
+	text-align: center;
+	font-size: .8em;
+	color: var(--irixfsl-soft);
+}
+.irixfsl-progress__step + .irixfsl-progress__step::before {
+	content: "";
+	position: absolute;
+	top: 4px;
+	right: calc(50% + 10px);
+	width: calc(100% - 20px);
+	height: 2px;
+	border-radius: 2px;
+	background: var(--irixfsl-line);
+}
+.irixfsl-progress__step.is-done::before,
+.irixfsl-progress__step.is-current::before { background: currentColor; color: inherit; }
+.irixfsl-progress__step.is-done,
+.irixfsl-progress__step.is-current { color: inherit; }
+.irixfsl-progress__dot {
+	display: block;
+	width: 10px;
+	height: 10px;
+	margin: 0 auto .6em;
+	border-radius: 50%;
+	background: var(--irixfsl-line);
+}
+.irixfsl-progress__step.is-done .irixfsl-progress__dot { background: currentColor; }
+.irixfsl-progress__step.is-current .irixfsl-progress__dot { background: currentColor; box-shadow: 0 0 0 4px rgba(0, 0, 0, .08); }
+.irixfsl-progress__step.is-current .irixfsl-progress__label { font-weight: 600; }
+
+/* Details: borderless label / value rows. Selectors include table.shop_table
+   so they outrank WooCommerce's own `.woocommerce table.shop_table` rules. */
+.woocommerce table.shop_table.irixfsl-tracking-table,
+.irixfsl-tracking-table {
+	border-radius: 0;
+	width: 100%;
+	margin: 0 0 1.25em;
+	border: 0;
+	border-collapse: collapse;
+}
+.woocommerce table.shop_table.irixfsl-tracking-table th,
+.woocommerce table.shop_table.irixfsl-tracking-table td,
+.irixfsl-tracking-table th,
+.irixfsl-tracking-table td {
+	padding: .75em 0;
+	border: 0;
+	border-top: 1px solid var(--irixfsl-line);
+	background: none;
+	text-align: left;
+	vertical-align: top;
+}
+.woocommerce table.shop_table.irixfsl-tracking-table tr:first-child th,
+.woocommerce table.shop_table.irixfsl-tracking-table tr:first-child td,
+.irixfsl-tracking-table tr:first-child th,
+.irixfsl-tracking-table tr:first-child td { border-top: 0; }
+.woocommerce table.shop_table.irixfsl-tracking-table th,
+.irixfsl-tracking-table th { width: 40%; font-weight: 400; color: var(--irixfsl-soft); }
+.irixfsl-tracking-number {
+	padding: 0;
+	background: none;
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+	font-size: .95em;
+	letter-spacing: .02em;
+}
+.irixfsl-tracking-info .woocommerce-button { margin: 0; }
+
+/* Phones: vertical tracker so labels never squash. */
+@media (max-width: 480px) {
+	.irixfsl-tracking-info { padding: 1.1em; }
+	.irixfsl-progress { flex-direction: column; gap: .85em; }
+	.irixfsl-progress__step { display: flex; align-items: center; gap: .75em; text-align: left; }
+	.irixfsl-progress__step + .irixfsl-progress__step::before { display: none; }
+	.irixfsl-progress__dot { margin: 0; }
+}

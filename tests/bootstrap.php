@@ -15,11 +15,15 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // ── WordPress function stubs ──────────────────────────────────────────────
 
 if ( ! function_exists( 'add_action' ) ) {
-    function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {}
+    function add_action( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+        $GLOBALS['_irixfsl_test_hooks'][ $hook ][ $priority ][] = $callback;
+    }
 }
 
 if ( ! function_exists( 'add_filter' ) ) {
-    function add_filter( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {}
+    function add_filter( string $hook, $callback, int $priority = 10, int $accepted_args = 1 ): void {
+        $GLOBALS['_irixfsl_test_hooks'][ $hook ][ $priority ][] = $callback;
+    }
 }
 
 if ( ! function_exists( 'add_query_arg' ) ) {
@@ -892,3 +896,48 @@ require_once IRIXFSL_DIR . 'includes/class-waybill.php';
 require_once IRIXFSL_DIR . 'includes/class-customer-portal.php';
 require_once IRIXFSL_DIR . 'includes/class-admin.php';
 require_once IRIXFSL_DIR . 'includes/class-email-tracking.php';
+
+// ── Stubs added for 1.2.0 ───────────────────────────────────────────────
+if ( ! function_exists( 'apply_filters' ) ) {
+    function apply_filters( string $hook, $value, ...$args ) { return $value; }
+}
+if ( ! function_exists( 'nocache_headers' ) ) {
+    function nocache_headers(): void {}
+}
+if ( ! function_exists( 'as_enqueue_async_action' ) ) {
+    /** Records enqueued actions in $GLOBALS['_irixfsl_test_async'] instead of running them. */
+    function as_enqueue_async_action( string $hook, array $args = [], string $group = '', bool $unique = false ): int {
+        $GLOBALS['_irixfsl_test_async'][] = [ $hook, $args ];
+        return 1;
+    }
+}
+if ( ! function_exists( 'wc_get_page_permalink' ) ) {
+    function wc_get_page_permalink( string $page ): string {
+        return 'https://example.com/my-account/';
+    }
+}
+if ( ! function_exists( 'wc_get_endpoint_url' ) ) {
+    function wc_get_endpoint_url( string $endpoint, string $value = '', string $permalink = '' ): string {
+        return $permalink . $endpoint . '/' . ( $value !== '' ? $value . '/' : '' );
+    }
+}
+if ( ! function_exists( 'as_next_scheduled_action' ) ) {
+    function as_next_scheduled_action( string $hook, ?array $args = null, string $group = '' ) {
+        foreach ( $GLOBALS['_irixfsl_test_async'] ?? [] as [ $h, $a ] ) {
+            if ( $h === $hook && ( $args === null || $a === $args ) ) return true;
+        }
+        return false;
+    }
+}
+if ( ! function_exists( 'wc_print_notice' ) ) {
+    function wc_print_notice( string $message, string $type = 'success' ): void {
+        echo '<div class="woocommerce-' . $type . '">' . $message . '</div>';
+    }
+}
+if ( ! function_exists( 'disabled' ) ) {
+    function disabled( $disabled, $current = true, bool $display = true ): string {
+        $r = (string) $disabled === (string) $current ? ' disabled="disabled"' : '';
+        if ( $display ) echo $r;
+        return $r;
+    }
+}

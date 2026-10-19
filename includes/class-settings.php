@@ -147,6 +147,12 @@ final class IRIXFSL_Settings {
 		return $choices;
 	}
 
+	/** WooCommerce 10.x ships a native (opt-in) Order Fulfillments feature that overlaps this plugin. */
+	public static function wc_fulfillments_enabled(): bool {
+		return class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class )
+			&& \Automattic\WooCommerce\Utilities\FeaturesUtil::feature_is_enabled( 'fulfillments' );
+	}
+
 	public function register_menu(): void {
 		add_submenu_page(
 			'woocommerce',
@@ -170,6 +176,10 @@ final class IRIXFSL_Settings {
 		<div class="wrap irixfsl-settings-wrap">
 			<h1><?php esc_html_e( 'IRIX Fulfillment SL — Settings', 'irix-fulfillment-sl' ); ?></h1>
 
+			<?php if ( self::wc_fulfillments_enabled() ) : ?>
+				<div class="notice notice-warning"><p><?php esc_html_e( 'WooCommerce\'s built-in Order Fulfillments feature is enabled. It has its own shipment tracking and customer notifications, which can duplicate this plugin\'s Shipment Tracking box and tracking email. Use one or the other (WooCommerce → Settings → Advanced → Features).', 'irix-fulfillment-sl' ); ?></p></div>
+			<?php endif; ?>
+
 			<?php if ( isset( $_GET['updated'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification ?>
 				<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'irix-fulfillment-sl' ); ?></p></div>
 			<?php endif; ?>
@@ -177,7 +187,16 @@ final class IRIXFSL_Settings {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( 'irixfsl_save', 'irixfsl_nonce' ); ?>
 				<input type="hidden" name="action" value="irixfsl_save">
+				<input type="hidden" name="irixfsl_tab" id="irixfsl-active-tab" value="company">
 
+				<nav class="nav-tab-wrapper irixfsl-tabs" aria-label="<?php esc_attr_e( 'Settings sections', 'irix-fulfillment-sl' ); ?>">
+					<a href="#company" class="nav-tab" data-tab="company"><?php esc_html_e( 'Company & Documents', 'irix-fulfillment-sl' ); ?></a>
+					<a href="#carriers" class="nav-tab" data-tab="carriers"><?php esc_html_e( 'Carriers', 'irix-fulfillment-sl' ); ?></a>
+					<a href="#local-delivery" class="nav-tab" data-tab="local-delivery"><?php esc_html_e( 'Local Delivery', 'irix-fulfillment-sl' ); ?></a>
+					<a href="#whatsapp" class="nav-tab" data-tab="whatsapp"><?php esc_html_e( 'WhatsApp', 'irix-fulfillment-sl' ); ?></a>
+				</nav>
+
+				<section class="irixfsl-tab-panel" data-panel="company">
 				<h2><?php esc_html_e( 'Company Information', 'irix-fulfillment-sl' ); ?></h2>
 				<table class="form-table">
 					<tr>
@@ -223,7 +242,9 @@ final class IRIXFSL_Settings {
 						</td>
 					</tr>
 				</table>
+				</section>
 
+				<section class="irixfsl-tab-panel" data-panel="carriers">
 				<h2><?php esc_html_e( 'Shipping Carriers', 'irix-fulfillment-sl' ); ?></h2>
 				<p class="description"><?php esc_html_e( 'Use {number} as placeholder for the tracking number in the URL.', 'irix-fulfillment-sl' ); ?></p>
 
@@ -246,7 +267,9 @@ final class IRIXFSL_Settings {
 					</tbody>
 				</table>
 				<p><button type="button" class="button" id="irixfsl-add-carrier"><?php esc_html_e( '+ Add Carrier', 'irix-fulfillment-sl' ); ?></button></p>
+				</section>
 
+				<section class="irixfsl-tab-panel" data-panel="local-delivery">
 				<h2><?php esc_html_e( 'Fulfillment Exceptions', 'irix-fulfillment-sl' ); ?></h2>
 				<p class="description">
 					<?php esc_html_e( 'Store Pickup orders (WooCommerce built-in local pickup) are detected automatically — no tracking is required and no shipping email is sent.', 'irix-fulfillment-sl' ); ?>
@@ -262,7 +285,7 @@ final class IRIXFSL_Settings {
 						<tr>
 							<th><?php esc_html_e( 'Name', 'irix-fulfillment-sl' ); ?></th>
 							<th><?php esc_html_e( 'Method ID', 'irix-fulfillment-sl' ); ?></th>
-							<th><?php esc_html_e( 'Fee (reference only)', 'irix-fulfillment-sl' ); ?></th>
+							<th><?php esc_html_e( 'Fee (added to order)', 'irix-fulfillment-sl' ); ?></th>
 							<th></th>
 						</tr>
 					</thead>
@@ -271,15 +294,25 @@ final class IRIXFSL_Settings {
 						<tr class="irixfsl-local-delivery-row">
 							<td><input type="text" name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][name]" value="<?php echo esc_attr( $row['name'] ?? '' ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. In-house Rider', 'irix-fulfillment-sl' ); ?>"></td>
 							<td>
+								<?php $is_pickup = in_array( $current_id, IRIXFSL_Tracking::PICKUP_METHOD_IDS, true ); ?>
 								<select name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][method_id]" class="regular-text">
 									<option value=""><?php esc_html_e( '— Select shipping method —', 'irix-fulfillment-sl' ); ?></option>
-									<?php foreach ( $shipping_method_choices as $method_id => $method_title ) : ?>
+									<?php foreach ( $shipping_method_choices as $method_id => $method_title ) :
+										// Pickup methods always resolve to Store Pickup first, so they
+										// can't act as local delivery — only list one if already saved.
+										if ( in_array( $method_id, IRIXFSL_Tracking::PICKUP_METHOD_IDS, true ) && $method_id !== $current_id ) continue; ?>
 										<option value="<?php echo esc_attr( $method_id ); ?>" <?php selected( $current_id, $method_id ); ?>><?php echo esc_html( $method_title ); ?> (<?php echo esc_html( $method_id ); ?>)</option>
 									<?php endforeach; ?>
 									<?php if ( $current_id !== '' && ! isset( $shipping_method_choices[ $current_id ] ) ) : ?>
 										<option value="<?php echo esc_attr( $current_id ); ?>" selected><?php echo esc_html( $current_id ); ?> <?php esc_html_e( '(not currently registered)', 'irix-fulfillment-sl' ); ?></option>
 									<?php endif; ?>
 								</select>
+								<?php if ( $is_pickup ) : ?>
+									<p class="irixfsl-row-warning">
+										<span class="dashicons dashicons-warning" aria-hidden="true"></span>
+										<?php esc_html_e( 'This is a Store Pickup method — orders using it are always treated as Store Pickup, so this row (and its fee) has no effect. Pick your delivery method instead.', 'irix-fulfillment-sl' ); ?>
+									</p>
+								<?php endif; ?>
 							</td>
 							<td><input type="number" step="0.01" min="0" name="irixfsl[local_delivery_methods][<?php echo esc_attr( $i ); ?>][fee]" value="<?php echo esc_attr( $row['fee'] ?? '' ); ?>" placeholder="0.00"></td>
 							<td><button type="button" class="button irixfsl-remove-local-delivery"><?php esc_html_e( 'Remove', 'irix-fulfillment-sl' ); ?></button></td>
@@ -288,7 +321,9 @@ final class IRIXFSL_Settings {
 					</tbody>
 				</table>
 				<p><button type="button" class="button" id="irixfsl-add-local-delivery"><?php esc_html_e( '+ Add Local Delivery Method', 'irix-fulfillment-sl' ); ?></button></p>
+				</section>
 
+				<section class="irixfsl-tab-panel" data-panel="whatsapp">
 				<h2><?php esc_html_e( 'WhatsApp Notifications', 'irix-fulfillment-sl' ); ?></h2>
 				<p class="description">
 					<?php esc_html_e( 'Sends a WhatsApp message via the Meta WhatsApp Business Cloud API when an order is marked Shipped. This requires a pre-approved message template — freeform text cannot be sent for system-triggered notifications.', 'irix-fulfillment-sl' ); ?>
@@ -336,6 +371,7 @@ final class IRIXFSL_Settings {
 						</td>
 					</tr>
 				</table>
+				</section>
 
 				<?php submit_button( __( 'Save Settings', 'irix-fulfillment-sl' ) ); ?>
 			</form>
@@ -352,10 +388,14 @@ final class IRIXFSL_Settings {
 		$raw  = isset( $_POST['irixfsl'] ) ? (array) wp_unslash( $_POST['irixfsl'] ) : []; // phpcs:ignore
 		$data = self::prepare_data_for_save( $raw );
 
-		update_option( self::OPTION_KEY, $data );
+		// autoload=false: holds the WhatsApp access token and is only needed on
+		// admin/document requests, so keep it out of every page's alloptions.
+		update_option( self::OPTION_KEY, $data, false );
 		self::flush_cache();
 
-		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) );
+		// Return to the tab the admin was on.
+		$tab = sanitize_key( wp_unslash( $_POST['irixfsl_tab'] ?? '' ) ); // phpcs:ignore WordPress.Security.NonceVerification -- checked above
+		wp_safe_redirect( add_query_arg( [ 'page' => 'irixfsl-settings', 'updated' => '1' ], admin_url( 'admin.php' ) ) . ( $tab ? '#' . $tab : '' ) );
 		exit;
 	}
 
@@ -410,7 +450,8 @@ final class IRIXFSL_Settings {
 	 * Method ID (that's the field actually matched against a real WooCommerce
 	 * shipping method's get_method_id()), and de-duplicates by Method ID —
 	 * last row for a given ID wins. Name is freeform and never required to
-	 * match anything; Fee is informational only.
+	 * match anything; Fee is added once to open orders using that method
+	 * (see IRIXFSL_Tracking::maybe_apply_local_delivery_fee()).
 	 */
 	public static function sanitize_local_delivery_methods( array $raw_rows ): array {
 		$seen = [];
@@ -439,7 +480,8 @@ final class IRIXFSL_Settings {
 		wp_enqueue_media();
 		wp_enqueue_script( 'irixfsl-admin', IRIXFSL_URL . 'assets/js/admin.js', [ 'jquery', 'media-upload' ], IRIXFSL_VERSION, true );
 		wp_localize_script( 'irixfsl-admin', 'irixfslAdmin', [
-			'shippingMethods' => self::get_registered_shipping_methods(),
+			// New rows never offer pickup methods (see the matching note in render_page()).
+			'shippingMethods' => array_diff_key( self::get_registered_shipping_methods(), array_flip( IRIXFSL_Tracking::PICKUP_METHOD_IDS ) ),
 			'i18n' => [
 				'selectLogo'          => __( 'Select Company Logo', 'irix-fulfillment-sl' ),
 				'useThisImage'        => __( 'Use this image', 'irix-fulfillment-sl' ),

@@ -13,15 +13,18 @@ final class IRIXFSL_Order_Statuses {
 		add_filter( 'wc_order_statuses',           [ $this, 'add_to_wc_statuses' ] );
 		add_filter( 'woocommerce_order_is_paid_statuses', [ $this, 'add_to_paid_statuses' ] );
 
-		// Bulk actions on orders list (Classic)
-		add_filter( 'bulk_actions-edit-shop_order',               [ $this, 'add_bulk_actions' ] );
-		add_filter( 'handle_bulk_action-edit-shop_order-mark_ready_to_ship', [ $this, 'handle_bulk_ready' ], 10, 3 );
-		add_filter( 'handle_bulk_action-edit-shop_order-mark_shipped',       [ $this, 'handle_bulk_shipped' ], 10, 3 );
+		// Returned goods are back on the shelf: restock (WC's own helper only acts
+		// if stock was reduced, so it never double-restocks), and keep the order
+		// out of Analytics revenue the same way WC treats Cancelled.
+		add_action( 'woocommerce_order_status_returned', 'wc_maybe_increase_stock_levels' );
+		add_filter( 'woocommerce_analytics_excluded_order_statuses', [ $this, 'exclude_returned_from_analytics' ] );
 
-		// HPOS bulk actions
-		add_filter( 'bulk_actions-woocommerce_page_wc-orders',               [ $this, 'add_bulk_actions' ] );
-		add_filter( 'handle_bulk_action-woocommerce_page_wc-orders-mark_ready_to_ship', [ $this, 'handle_bulk_ready' ], 10, 3 );
-		add_filter( 'handle_bulk_action-woocommerce_page_wc-orders-mark_shipped',       [ $this, 'handle_bulk_shipped' ], 10, 3 );
+		// Bulk actions (Classic + HPOS). Keys must NOT contain "mark_": WC core
+		// grabs any such action itself and changes status without our checks.
+		add_filter( 'bulk_actions-edit-shop_order',                   [ $this, 'add_bulk_actions' ] );
+		add_filter( 'handle_bulk_actions-edit-shop_order',            [ $this, 'handle_bulk_actions' ], 10, 3 );
+		add_filter( 'bulk_actions-woocommerce_page_wc-orders',        [ $this, 'add_bulk_actions' ] );
+		add_filter( 'handle_bulk_actions-woocommerce_page_wc-orders', [ $this, 'handle_bulk_actions' ], 10, 3 );
 
 		// Server-side guard: revert individual "Shipped" saves without a tracking number.
 		add_action( 'woocommerce_order_status_changed', [ $this, 'enforce_tracking_for_shipped' ], 10, 4 );
@@ -108,10 +111,26 @@ final class IRIXFSL_Order_Statuses {
 		return $statuses;
 	}
 
+	public function exclude_returned_from_analytics( $statuses ) {
+		$statuses   = (array) $statuses;
+		$statuses[] = 'returned';
+		return array_values( array_unique( $statuses ) );
+	}
+
 	public function add_bulk_actions( array $actions ): array {
-		$actions['mark_ready_to_ship'] = __( 'Change status to Ready to Ship', 'irix-fulfillment-sl' );
-		$actions['mark_shipped']       = __( 'Change status to Shipped', 'irix-fulfillment-sl' );
+		$actions['irixfsl_ready_to_ship'] = __( 'Change status to Ready to Ship', 'irix-fulfillment-sl' );
+		$actions['irixfsl_shipped']       = __( 'Change status to Shipped', 'irix-fulfillment-sl' );
 		return $actions;
+	}
+
+	public function handle_bulk_actions( $redirect, $action, $ids ) {
+		switch ( $action ) {
+			case 'irixfsl_ready_to_ship':
+				return $this->handle_bulk_ready( (string) $redirect, $action, (array) $ids );
+			case 'irixfsl_shipped':
+				return $this->handle_bulk_shipped( (string) $redirect, $action, (array) $ids );
+		}
+		return $redirect;
 	}
 
 	public function handle_bulk_ready( string $redirect, string $action, array $ids ): string {

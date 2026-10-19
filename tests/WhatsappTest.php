@@ -195,6 +195,40 @@ final class WhatsappTest extends TestCase {
 		$this->assertSame( '1', $order->get_meta( IRIXFSL_Whatsapp::META_SENT ) );
 	}
 
+	public function test_status_changed_skips_order_reverted_by_tracking_guard(): void {
+		$this->configureWhatsapp();
+		$order = new WC_Order( 908 );
+		$order->set_billing_phone( '0771234567' );
+		$order->set_status( 'processing' ); // Guard already reverted shipped -> processing.
+		$GLOBALS['_irixfsl_test_async'] = [];
+
+		$this->instance()->on_status_changed( 908, 'processing', 'shipped', $order );
+
+		$this->assertSame( [], $GLOBALS['_irixfsl_test_async'] );
+	}
+
+	public function test_status_changed_queues_send_when_order_stays_shipped(): void {
+		$order = new WC_Order( 909 );
+		$order->set_status( 'shipped' );
+		$GLOBALS['_irixfsl_test_async'] = [];
+
+		$this->instance()->on_status_changed( 909, 'processing', 'shipped', $order );
+
+		$this->assertSame( [ [ 'irixfsl_send_whatsapp', [ 909 ] ] ], $GLOBALS['_irixfsl_test_async'] );
+	}
+
+	public function test_send_uses_current_graph_api_version(): void {
+		$this->configureWhatsapp();
+		$order = new WC_Order( 910 );
+		$order->set_billing_phone( '0771234567' );
+		global $_irixfsl_test_http_response, $_irixfsl_test_http_requests;
+		$_irixfsl_test_http_response = [ 'response' => [ 'code' => 200 ], 'body' => '{}' ];
+
+		$this->instance()->send_shipped_message( $order );
+
+		$this->assertStringContainsString( 'graph.facebook.com/v25.0/', $_irixfsl_test_http_requests[0]['url'] ?? '' );
+	}
+
 	// ── ajax_resend() ────────────────────────────────────────────────────
 
 	public function test_ajax_resend_sends_message_for_authorized_user(): void {

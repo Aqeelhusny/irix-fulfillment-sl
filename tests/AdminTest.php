@@ -65,7 +65,7 @@ final class AdminTest extends TestCase {
 
 		$result = $this->instance()->add_documents_column( $columns );
 
-		$this->assertSame( 'Fulfillment', $result['irixfsl_documents'] );
+		$this->assertSame( 'Documents', $result['irixfsl_documents'] );
 	}
 
 	// ── add_bulk_actions() ──────────────────────────────────────────────
@@ -108,5 +108,23 @@ final class AdminTest extends TestCase {
 		);
 
 		$this->assertStringContainsString( 'irixfsl_bulk_slip_redirect=', $result );
+	}
+
+	// ── handle_bulk_actions() dispatch + real hook names ────────────────
+
+	public function test_registers_core_bulk_action_hooks(): void {
+		$GLOBALS['_irixfsl_test_hooks'] = [];
+		\IRIXFSL_Admin::_reset_instance();
+		$this->instance();
+
+		$this->assertArrayHasKey( 'handle_bulk_actions-edit-shop_order', $GLOBALS['_irixfsl_test_hooks'] );
+		$this->assertArrayHasKey( 'handle_bulk_actions-woocommerce_page_wc-orders', $GLOBALS['_irixfsl_test_hooks'] );
+	}
+
+	public function test_handle_bulk_actions_dispatches_print_actions(): void {
+		$url = 'https://example.com/wp-admin/edit.php';
+		$this->assertStringContainsString( 'irixfsl_bulk_invoice_redirect=', $this->instance()->handle_bulk_actions( $url, 'print_invoices', [ 1 ] ) );
+		$this->assertStringContainsString( 'irixfsl_bulk_slip_redirect=', $this->instance()->handle_bulk_actions( $url, 'print_packing_slips', [ 1 ] ) );
+		$this->assertSame( $url, $this->instance()->handle_bulk_actions( $url, 'trash', [ 1 ] ) );
 	}
 }

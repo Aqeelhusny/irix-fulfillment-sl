@@ -26,37 +26,43 @@
 		var suppressNextChange = false;
 
 		var $overlay = $(
-			'<div id="irixfsl-reason-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;align-items:center;justify-content:center;">' +
-				'<div style="background:#fff;border-radius:4px;max-width:420px;width:90%;padding:20px;box-shadow:0 4px 20px rgba(0,0,0,.3);">' +
-					'<h3 style="margin-top:0">' + esc(i18n.heading || 'Reason required') + '</h3>' +
-					'<p style="color:#555;font-size:13px">' + esc(i18n.description || '') + '</p>' +
-					'<textarea id="irixfsl-reason-textarea" rows="4" style="width:100%;box-sizing:border-box" placeholder="' + esc(i18n.placeholder || '') + '"></textarea>' +
-					'<p id="irixfsl-reason-error" style="color:#b32d2e;display:none;font-size:12px"></p>' +
-					'<p style="text-align:right;margin-bottom:0">' +
-						'<button type="button" class="button" id="irixfsl-reason-cancel">' + esc(i18n.cancel || 'Cancel') + '</button> ' +
+			'<div id="irixfsl-reason-overlay" class="irixfsl-modal-overlay" hidden>' +
+				'<div class="irixfsl-modal" role="dialog" aria-modal="true" aria-labelledby="irixfsl-reason-title">' +
+					'<h2 id="irixfsl-reason-title">' + esc(i18n.heading || 'Reason required') + '</h2>' +
+					'<p class="irixfsl-modal-desc">' + esc(i18n.description || '') + '</p>' +
+					'<label class="screen-reader-text" for="irixfsl-reason-textarea">' + esc(i18n.heading || 'Reason required') + '</label>' +
+					'<textarea id="irixfsl-reason-textarea" rows="4" placeholder="' + esc(i18n.placeholder || '') + '"></textarea>' +
+					'<p id="irixfsl-reason-error" class="irixfsl-modal-error" role="alert" hidden></p>' +
+					'<div class="irixfsl-modal-actions">' +
+						'<button type="button" class="button" id="irixfsl-reason-cancel">' + esc(i18n.cancel || 'Cancel') + '</button>' +
 						'<button type="button" class="button button-primary" id="irixfsl-reason-save">' + esc(i18n.save || 'Save Reason') + '</button>' +
-					'</p>' +
+					'</div>' +
 				'</div>' +
 			'</div>'
 		).appendTo('body');
 
+		// Esc cancels, like any WP modal.
+		$overlay.on('keydown', function (e) {
+			if (e.key === 'Escape') $('#irixfsl-reason-cancel').trigger('click');
+		});
+
 		function openModal(onSave, onCancel) {
 			$('#irixfsl-reason-textarea').val('');
-			$('#irixfsl-reason-error').hide();
-			$overlay.css('display', 'flex');
+			$('#irixfsl-reason-error').prop('hidden', true);
+			$overlay.prop('hidden', false);
 			$('#irixfsl-reason-textarea').trigger('focus');
 
 			$('#irixfsl-reason-save').off('click').on('click', function () {
 				var val = $.trim($('#irixfsl-reason-textarea').val());
 				if (!val) {
-					$('#irixfsl-reason-error').text(i18n.required || 'Please enter a reason.').show();
+					$('#irixfsl-reason-error').text(i18n.required || 'Please enter a reason.').prop('hidden', false);
 					return;
 				}
-				$overlay.hide();
+				$overlay.prop('hidden', true);
 				onSave(val);
 			});
 			$('#irixfsl-reason-cancel').off('click').on('click', function () {
-				$overlay.hide();
+				$overlay.prop('hidden', true);
 				onCancel();
 			});
 		}

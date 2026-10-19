@@ -17,6 +17,38 @@
 		return options;
 	}
 
+	// Settings tabs — one form, panels toggled client-side. Without JS every
+	// panel stays visible (the hiding class is only added here).
+	var $tabs   = $('.irixfsl-tabs .nav-tab');
+	var $panels = $('.irixfsl-tab-panel');
+	function showTab(tab) {
+		if (!$panels.filter('[data-panel="' + tab + '"]').length) tab = 'company';
+		$tabs.removeClass('nav-tab-active').attr('aria-selected', 'false')
+			.filter('[data-tab="' + tab + '"]').addClass('nav-tab-active').attr('aria-selected', 'true');
+		$panels.removeClass('is-active').filter('[data-panel="' + tab + '"]').addClass('is-active');
+		$('#irixfsl-active-tab').val(tab);
+	}
+	if ($tabs.length) {
+		$('.irixfsl-settings-wrap').addClass('irixfsl-tabs-ready');
+		$tabs.on('click', function (e) {
+			e.preventDefault();
+			var tab = $(this).data('tab');
+			showTab(tab);
+			try { history.replaceState(null, '', '#' + tab); } catch (err) {}
+		});
+		showTab(window.location.hash.replace('#', ''));
+
+		// A field failing HTML5 validation on a hidden tab would block the save
+		// silently — jump to its tab so the browser can show the message.
+		var form = $('.irixfsl-settings-wrap form').get(0);
+		if (form) {
+			form.addEventListener('invalid', function (e) {
+				var panel = $(e.target).closest('.irixfsl-tab-panel').data('panel');
+				if (panel) showTab(panel);
+			}, true);
+		}
+	}
+
 	// Media uploader for company logo
 	var mediaUploader;
 	$('#irixfsl-logo-btn').on('click', function (e) {

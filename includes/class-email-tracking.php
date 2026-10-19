@@ -50,10 +50,14 @@ class IRIXFSL_Email_Tracking extends WC_Email {
 		$this->placeholders['{order_number}'] = $order->get_order_number();
 		$this->placeholders['{order_date}']   = wc_format_datetime( $order->get_date_created() );
 
-		// Adjust subject and heading for local delivery.
+		// Set both every time: this instance is shared, so a local-delivery send
+		// must not leak its wording into later standard sends (e.g. bulk ship).
 		if ( $fulfillment_type === 'local_delivery' ) {
 			$this->heading = __( 'Your order is out for delivery!', 'irix-fulfillment-sl' );
 			$this->subject = __( 'Your {site_title} order #{order_number} is on its way', 'irix-fulfillment-sl' );
+		} else {
+			$this->heading = __( 'Your order has been shipped!', 'irix-fulfillment-sl' );
+			$this->subject = __( 'Your {site_title} order #{order_number} has been shipped', 'irix-fulfillment-sl' );
 		}
 
 		$sent = false;

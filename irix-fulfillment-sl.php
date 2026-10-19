@@ -3,20 +3,21 @@
  * Plugin Name: IRIX Fulfillment SL
  * Plugin URI:  https://irixsolutions.net
  * Description: WooCommerce invoicing, packing slips, and order tracking with Sri Lanka carrier support.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Aqeel Husny
  * Text Domain: irix-fulfillment-sl
  * License:     GPLv2 or later
- * Requires at least: 6.0
+ * Requires at least: 6.5
+ * Tested up to:      7.1
  * Requires PHP:      8.0
  * Requires Plugins:  woocommerce
- * WC requires at least: 7.0
- * WC tested up to:      9.9
+ * WC requires at least: 8.0
+ * WC tested up to:      10.9
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'IRIXFSL_VERSION',    '1.1.0' );
+define( 'IRIXFSL_VERSION',    '1.2.0' );
 define( 'IRIXFSL_DIR',        plugin_dir_path( __FILE__ ) );
 define( 'IRIXFSL_URL',        plugin_dir_url( __FILE__ ) );
 define( 'IRIXFSL_PLUGIN_FILE', __FILE__ );
@@ -43,7 +44,10 @@ final class WC_Fulfillment_SL {
 			return;
 		}
 
-		load_plugin_textdomain( 'irix-fulfillment-sl', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+		// WP 6.7+ warns when translations load before init.
+		add_action( 'init', static function () {
+			load_plugin_textdomain( 'irix-fulfillment-sl', false, dirname( plugin_basename( IRIXFSL_PLUGIN_FILE ) ) . '/languages' );
+		} );
 
 		require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 		require_once IRIXFSL_DIR . 'includes/class-settings.php';

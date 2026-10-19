@@ -265,6 +265,39 @@ body {
 	padding: 2mm 2mm;
 }
 
+/* ── 3b. Payment / amount to collect ──────────────────── */
+.wb-payment {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2mm;
+	height: 11mm;
+	padding: 0 3mm;
+	border-bottom: 1px solid #000;
+	flex-shrink: 0;
+}
+.wb-payment-label {
+	font-size: 8px;
+	font-weight: 900;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+.wb-payment-amount {
+	font-size: 16px;
+	font-weight: 900;
+	white-space: nowrap;
+}
+.wb-payment--cod {
+	background: #000;
+	color: #fff;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+.wb-payment--prepaid .wb-payment-amount {
+	font-size: 11px;
+	color: #555;
+}
+
 /* ── 5. Pieces / Weight ───────────────────────────────── */
 .wb-meta-row {
 	display: grid;
@@ -387,6 +420,16 @@ unset( $addr_fields['first_name'], $addr_fields['last_name'] );
 $ship_addr = WC()->countries->get_formatted_address( $addr_fields );
 $phone = $order->get_billing_phone();
 
+// Payment strip: COD orders show the cash to collect; prepaid local-delivery
+// orders say so explicitly so the rider never collects twice. COD orders sit
+// in Processing (which WC counts as "paid"), so is_paid() can't be used here.
+$is_cod       = 'cod' === $order->get_payment_method();
+$show_payment = $is_cod || 'local_delivery' === IRIXFSL_Tracking::get_fulfillment_type( $order );
+$amount_due   = wc_price(
+	max( 0, (float) $order->get_total() - (float) $order->get_total_refunded() ),
+	[ 'currency' => $order->get_currency() ]
+);
+
 // Build product names list (max 4 items)
 $items       = $order->get_items();
 $item_names  = [];
@@ -476,6 +519,18 @@ foreach ( $items as $item ) {
 			<div class="wb-to-phone"><?php echo esc_html( $phone ); ?></div>
 		<?php endif; ?>
 	</div>
+
+	<?php if ( $show_payment ) : ?>
+	<!-- 3b. Payment / amount to collect -->
+	<div class="wb-payment <?php echo $is_cod ? 'wb-payment--cod' : 'wb-payment--prepaid'; ?>">
+		<div class="wb-payment-label">
+			<?php $is_cod
+				? esc_html_e( 'Cash on Delivery — Collect', 'irix-fulfillment-sl' )
+				: esc_html_e( 'Prepaid — Do Not Collect', 'irix-fulfillment-sl' ); ?>
+		</div>
+		<div class="wb-payment-amount"><?php echo wp_kses_post( $amount_due ); ?></div>
+	</div>
+	<?php endif; ?>
 
 	<!-- 4. Product names | Sender Account -->
 	<div class="wb-product-row">

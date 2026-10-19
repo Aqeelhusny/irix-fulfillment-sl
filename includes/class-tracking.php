@@ -5,7 +5,7 @@ final class IRIXFSL_Tracking {
 
 	use IRIXFSL_Singleton;
 
-	/** Prevents double-save when both Classic and HPOS hooks fire in the same request. */
+	/** Prevents a double save if woocommerce_process_shop_order_meta fires twice in one request. */
 	private static bool $tracking_saved = false;
 
 	const META_CARRIER  = '_irixfsl_carrier';
@@ -14,18 +14,21 @@ final class IRIXFSL_Tracking {
 	const META_SENT     = '_irixfsl_tracking_email_sent';
 	const META_LOCAL_DELIVERY_FEE_APPLIED = '_irixfsl_local_delivery_fee_applied';
 
+	/** WooCommerce built-in pickup method IDs (core + Blocks + common extensions). */
+	const PICKUP_METHOD_IDS = [ 'local_pickup', 'local_pickup_plus', 'pickup_location', 'pickup' ];
+
 	protected function boot(): void {
 		add_action( 'add_meta_boxes',                      [ $this, 'add_meta_box' ] );
 		add_action( 'admin_enqueue_scripts',               [ $this, 'enqueue_assets' ] );
+		// Fires on both the classic and HPOS order edit screens, at priority 10 —
+		// before WC_Meta_Box_Order_Data::save (40) applies the status change, so
+		// the tracking number is in place when the Shipped guard checks for it.
 		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'save_meta' ] );
-		add_action( 'save_post_shop_order',                [ $this, 'save_meta' ] );
 
-		// HPOS save
-		add_action( 'woocommerce_after_order_object_save', [ $this, 'hpos_save_meta' ] );
-
-		// Auto-send tracking email when status moves to shipped.
-		// WooCommerce fires woocommerce_order_status_{status} with the wc- prefix stripped.
-		add_action( 'woocommerce_order_status_shipped', [ $this, 'maybe_send_tracking_email' ] );
+		// Priority 20: after the Shipped guard (10) may have reverted the order.
+		// The email itself goes out in the background via Action Scheduler.
+		add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 20, 4 );
+		add_action( 'irixfsl_send_tracking_email',      [ $this, 'maybe_send_tracking_email' ] );
 
 		// AJAX: manual resend
 		add_action( 'wp_ajax_irixfsl_resend_tracking', [ $this, 'ajax_resend' ] );
@@ -44,7 +47,8 @@ final class IRIXFSL_Tracking {
 			'i18n'     => [
 				'sending' => __( 'Sending…', 'irix-fulfillment-sl' ),
 				'sent'    => __( 'Email Sent!', 'irix-fulfillment-sl' ),
-				'retry'   => __( 'Retry', 'irix-fulfillment-sl' ),
+				'retry'    => __( 'Retry', 'irix-fulfillment-sl' ),
+				'sentPill' => __( 'Email sent', 'irix-fulfillment-sl' ),
 			],
 		] );
 	}
@@ -86,29 +90,30 @@ final class IRIXFSL_Tracking {
 
 		// Store pickup: no tracking needed at all.
 		if ( $fulfillment_type === 'pickup' ) {
-			echo '<p style="color:#1a7a2a;font-size:12px;display:flex;align-items:center;gap:5px;">'
-				. '<span class="dashicons dashicons-store" style="color:#1a7a2a"></span>'
-				. '<strong>' . esc_html__( 'Store Pickup', 'irix-fulfillment-sl' ) . '</strong></p>'
-				. '<p style="color:#555;font-size:12px">'
-				. esc_html__( 'This order is set for in-store collection. No tracking number or shipping notification is required.', 'irix-fulfillment-sl' )
-				. '</p>';
+			echo '<div class="irixfsl-callout irixfsl-callout--success">'
+				. '<span class="dashicons dashicons-store" aria-hidden="true"></span>'
+				. '<div><strong>' . esc_html__( 'Store Pickup', 'irix-fulfillment-sl' ) . '</strong>'
+				. '<p>' . esc_html__( 'This order is set for in-store collection. No tracking number or shipping notification is required.', 'irix-fulfillment-sl' ) . '</p></div>'
+				. '</div>';
 			return;
 		}
 
 		wp_nonce_field( 'irixfsl_tracking_save', 'irixfsl_tracking_nonce' );
 
-		// Local delivery notice banner.
 		if ( $fulfillment_type === 'local_delivery' ) : ?>
-			<p style="background:#fff8e1;border-left:3px solid #f0b429;padding:6px 8px;font-size:11px;margin-bottom:8px;color:#7c5500;">
-				<span class="dashicons dashicons-car" style="vertical-align:middle;font-size:14px;color:#f0b429"></span>
-				<strong><?php esc_html_e( 'Local Delivery', 'irix-fulfillment-sl' ); ?></strong> —
-				<?php esc_html_e( 'In-house delivery. Tracking number is optional (used as internal reference only). No external tracking link will be sent to the customer.', 'irix-fulfillment-sl' ); ?>
-			</p>
+			<div class="irixfsl-callout irixfsl-callout--warning">
+				<span class="dashicons dashicons-car" aria-hidden="true"></span>
+				<div>
+					<strong><?php esc_html_e( 'Local Delivery', 'irix-fulfillment-sl' ); ?></strong>
+					<p><?php esc_html_e( 'In-house delivery. Tracking number is optional (used as internal reference only). No external tracking link will be sent to the customer.', 'irix-fulfillment-sl' ); ?></p>
+				</div>
+			</div>
 		<?php endif; ?>
-		<p>
-			<label for="irixfsl_carrier"><strong><?php esc_html_e( 'Carrier', 'irix-fulfillment-sl' ); ?></strong></label><br>
+
+		<div class="irixfsl-field">
+			<label for="irixfsl_carrier"><?php esc_html_e( 'Carrier', 'irix-fulfillment-sl' ); ?></label>
 			<?php if ( $carrier_is_editable ) : ?>
-				<select id="irixfsl_carrier" name="irixfsl_carrier" style="width:100%">
+				<select id="irixfsl_carrier" name="irixfsl_carrier">
 					<option value=""><?php esc_html_e( '— Select Carrier —', 'irix-fulfillment-sl' ); ?></option>
 					<?php if ( $local_delivery_name !== '' ) : ?>
 						<option value="<?php echo esc_attr( $local_delivery_name ); ?>" <?php selected( $effective_carrier, $local_delivery_name ); ?>>
@@ -122,42 +127,54 @@ final class IRIXFSL_Tracking {
 					<?php endforeach; ?>
 				</select>
 			<?php else : ?>
-				<span style="display:block;padding:4px 0;color:#555;"><?php echo esc_html( $carrier !== '' ? $carrier : __( '— none —', 'irix-fulfillment-sl' ) ); ?></span>
+				<span class="irixfsl-readonly"><?php echo esc_html( $carrier !== '' ? $carrier : __( '— none —', 'irix-fulfillment-sl' ) ); ?></span>
 				<span class="description"><?php esc_html_e( 'Carrier can only be changed while the order is Processing, Ready to Ship, or Shipped.', 'irix-fulfillment-sl' ); ?></span>
 				<?php // Preserve the saved value on submit — this field isn't rendered as an editable control outside the allowed statuses. ?>
 				<input type="hidden" name="irixfsl_carrier" value="<?php echo esc_attr( $carrier ); ?>">
 			<?php endif; ?>
-		</p>
-		<p>
+		</div>
+
+		<div class="irixfsl-field">
 			<label for="irixfsl_tracking_number">
-				<strong><?php esc_html_e( 'Tracking Number', 'irix-fulfillment-sl' ); ?></strong>
+				<?php esc_html_e( 'Tracking Number', 'irix-fulfillment-sl' ); ?>
 				<?php if ( $fulfillment_type === 'local_delivery' ) : ?>
-					<span style="font-weight:400;color:#888"> (<?php esc_html_e( 'optional — internal ref', 'irix-fulfillment-sl' ); ?>)</span>
+					<span class="irixfsl-optional"><?php esc_html_e( 'optional — internal ref', 'irix-fulfillment-sl' ); ?></span>
 				<?php endif; ?>
-			</label><br>
-			<input type="text" id="irixfsl_tracking_number" name="irixfsl_tracking_number" value="<?php echo esc_attr( $number ); ?>" style="width:100%">
-		</p>
+			</label>
+			<input type="text" id="irixfsl_tracking_number" name="irixfsl_tracking_number" value="<?php echo esc_attr( $number ); ?>" autocomplete="off" spellcheck="false">
+		</div>
+
 		<?php if ( $fulfillment_type !== 'local_delivery' ) : ?>
-		<p>
-			<label for="irixfsl_tracking_url"><strong><?php esc_html_e( 'Tracking URL', 'irix-fulfillment-sl' ); ?></strong></label><br>
-			<input type="url" id="irixfsl_tracking_url" name="irixfsl_tracking_url" value="<?php echo esc_attr( $url ); ?>" style="width:100%" placeholder="Auto-generated or enter manually">
+		<div class="irixfsl-field">
+			<label for="irixfsl_tracking_url"><?php esc_html_e( 'Tracking URL', 'irix-fulfillment-sl' ); ?></label>
+			<input type="url" id="irixfsl_tracking_url" name="irixfsl_tracking_url" value="<?php echo esc_attr( $url ); ?>" placeholder="<?php esc_attr_e( 'Auto-generated or enter manually', 'irix-fulfillment-sl' ); ?>">
 			<span class="description"><?php esc_html_e( 'Auto-filled from carrier template. Override if needed.', 'irix-fulfillment-sl' ); ?></span>
-		</p>
+		</div>
 		<?php endif; ?>
-		<?php if ( $number ) : ?>
-		<p>
-			<button type="button" class="button button-secondary" id="irixfsl-resend-tracking" data-order="<?php echo esc_attr( $order->get_id() ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'irixfsl_resend_tracking' ) ); ?>">
-				<?php $sent ? esc_html_e( 'Resend Tracking Email', 'irix-fulfillment-sl' ) : esc_html_e( 'Send Tracking Email', 'irix-fulfillment-sl' ); ?>
+
+		<?php if ( $number ) :
+			$email_state = $sent ? 'sent' : ( as_next_scheduled_action( 'irixfsl_send_tracking_email', [ $order->get_id() ], 'irix-fulfillment-sl' ) ? 'queued' : 'none' );
+			$email_label = [
+				'sent'   => __( 'Email sent', 'irix-fulfillment-sl' ),
+				'queued' => __( 'Email queued — sending shortly', 'irix-fulfillment-sl' ),
+				'none'   => __( 'Email not sent yet', 'irix-fulfillment-sl' ),
+			][ $email_state ];
+			?>
+		<div class="irixfsl-status-row">
+			<?php echo IRIXFSL_Helpers::status_pill( $email_state, $email_label ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in helper ?>
+		</div>
+		<div class="irixfsl-actions">
+			<button type="button" class="button" id="irixfsl-resend-tracking" data-order="<?php echo esc_attr( $order->get_id() ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'irixfsl_resend_tracking' ) ); ?>">
+				<span class="dashicons dashicons-email-alt" aria-hidden="true"></span>
+				<span class="irixfsl-btn-label"><?php $sent ? esc_html_e( 'Resend Email', 'irix-fulfillment-sl' ) : esc_html_e( 'Send Email', 'irix-fulfillment-sl' ); ?></span>
 			</button>
 			<?php if ( $url ) : ?>
-				<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer" class="button button-secondary" id="irixfsl-check-tracking">
+				<a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer" class="button" id="irixfsl-check-tracking">
+					<span class="dashicons dashicons-external" aria-hidden="true"></span>
 					<?php esc_html_e( 'Check Tracking', 'irix-fulfillment-sl' ); ?>
 				</a>
 			<?php endif; ?>
-			<?php if ( $sent ) : ?>
-				<span style="color:#1a7a2a;margin-left:6px">&#10003; <?php esc_html_e( 'Email sent', 'irix-fulfillment-sl' ); ?></span>
-			<?php endif; ?>
-		</p>
+		</div>
 		<?php endif; ?>
 		<?php
 	}
@@ -169,15 +186,6 @@ final class IRIXFSL_Tracking {
 
 		$order = IRIXFSL_Helpers::resolve_order( $post_id_or_order );
 		if ( ! $order ) return;
-
-		self::$tracking_saved = true;
-		$this->persist_tracking( $order );
-	}
-
-	public function hpos_save_meta( WC_Order $order ): void {
-		if ( self::$tracking_saved ) return;
-		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
 
 		self::$tracking_saved = true;
 		$this->persist_tracking( $order );
@@ -234,11 +242,13 @@ final class IRIXFSL_Tracking {
 	 * Runs on every admin save of a local-delivery order (see persist_tracking()
 	 * callers); the META_LOCAL_DELIVERY_FEE_APPLIED flag is set *before* the
 	 * order is re-saved below, so the resulting recursive
-	 * woocommerce_after_order_object_save / save_post_shop_order fire (guarded
-	 * anyway by self::$tracking_saved) sees the fee as already applied.
+	 * save never re-applies it.
 	 */
 	private function maybe_apply_local_delivery_fee( WC_Order $order ): void {
 		if ( $order->get_meta( self::META_LOCAL_DELIVERY_FEE_APPLIED ) ) return;
+		// Only while the order is still open — never re-price an order that has
+		// already shipped, completed, or been cancelled/refunded/returned.
+		if ( ! $order->has_status( [ 'pending', 'on-hold', 'processing', 'ready-to-ship' ] ) ) return;
 		if ( self::get_fulfillment_type( $order ) !== 'local_delivery' ) return;
 
 		$fee = $this->find_matching_local_delivery_fee( $order );
@@ -298,6 +308,13 @@ final class IRIXFSL_Tracking {
 		return null;
 	}
 
+	public function on_status_changed( int $order_id, string $from, string $to, WC_Order $order ): void {
+		// has_status() reflects a revert made earlier in this same hook.
+		if ( $to !== 'shipped' || ! $order->has_status( 'shipped' ) ) return;
+		as_enqueue_async_action( 'irixfsl_send_tracking_email', [ $order_id ], 'irix-fulfillment-sl', true );
+	}
+
+	/** Action Scheduler callback — also safe to call directly. */
 	public function maybe_send_tracking_email( int $order_id ): void {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
@@ -381,8 +398,7 @@ final class IRIXFSL_Tracking {
 	 *   'standard'       — normal order requiring external tracking
 	 */
 	public static function get_fulfillment_type( WC_Order $order ): string {
-		// WooCommerce built-in pickup method IDs (core + common extensions).
-		$pickup_ids = [ 'local_pickup', 'local_pickup_plus', 'pickup_location', 'pickup' ];
+		$pickup_ids = self::PICKUP_METHOD_IDS;
 
 		// Admin-configured in-house delivery method IDs.
 		$local_ids  = array_column( (array) ( IRIXFSL_Settings::get( 'local_delivery_methods' ) ?: [] ), 'method_id' );
