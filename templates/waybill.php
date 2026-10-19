@@ -5,282 +5,248 @@
 <meta charset="UTF-8">
 <title><?php printf( esc_html__( 'Waybill — Order #%s', 'irix-fulfillment-sl' ), esc_html( $order->get_order_number() ) ); ?></title>
 <style>
+/*
+ * Waybill — 4 × 6 in (101.6 × 152.4 mm) label stock.
+ *
+ * The label itself is 98 × 148 mm (inside the 100 × 150 mm print area) and
+ * is centred on the page, leaving ~2 mm for printer edge tolerance. Screen
+ * and print use the SAME size so the preview is exactly what prints.
+ *
+ * Height budget (148 mm, border-box):
+ *   header 26 · barcode 20 · recipient (flex, ≈52) · payment 10 ·
+ *   order/carrier 12 · pieces/weight 12 · QR 15 (optional)
+ * Every fixed section clips its own overflow and long text is line-clamped,
+ * so no data can push the label past 148 mm.
+ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+	--wb-w: 98mm;
+	--wb-h: 148mm;
+	--wb-line: 0.3mm solid #000;
+}
 
 body {
 	font-family: Arial, Helvetica, sans-serif;
-	background: #ccc;
+	color: #000;
+	background: #d4d4d8;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	padding: 20px;
-	gap: 16px;
-}
-
-/* ── Print button bar ─────────────────────────────────── */
-.print-bar {
-	background: #1d2327;
-	color: #fff;
-	padding: 8px 16px;
-	border-radius: 4px;
-	display: flex;
 	align-items: center;
 	gap: 12px;
-	font-size: 13px;
-	width: 100mm;
-}
-.print-bar span { flex: 1; }
-.print-bar button {
-	background: #2271b1;
-	color: #fff;
-	border: none;
-	padding: 5px 14px;
-	font-size: 12px;
-	font-weight: 700;
-	border-radius: 3px;
-	cursor: pointer;
+	padding: 20px;
 }
 
-/* ── Label card ───────────────────────────────────────── */
-.waybill {
-	width: 100mm;
-	height: 150mm;
-	background: #fff;
-	border: 1.5px solid #000;
-	display: flex;
-	flex-direction: column;
+/* Clamp helper: N lines then ellipsis. */
+.wb-clamp {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
 	overflow: hidden;
 }
 
-/* ── 1. Header: logo col | sender col ────────────────── */
-.wb-header {
-	display: grid;
-	grid-template-columns: 27mm 1fr;
-	border-bottom: 1.5px solid #000;
-	height: 28mm;
-	flex-shrink: 0;
+/* ── Print button bar (screen only) ───────────────────── */
+.print-bar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	width: var(--wb-w);
+	padding: 8px 12px;
+	background: #18181b;
+	color: #fff;
+	border-radius: 6px;
+	font-size: 13px;
 }
-.wb-logo-col {
-	padding: 3mm 2.5mm;
-	border-right: 1px solid #000;
+.print-bar span { flex: 1; }
+.print-bar button {
+	padding: 5px 14px;
+	background: #fff;
+	color: #18181b;
+	border: 0;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+/* ── Label ────────────────────────────────────────────── */
+.waybill {
 	display: flex;
 	flex-direction: column;
+	width: var(--wb-w);
+	height: var(--wb-h);
+	overflow: hidden;
+	background: #fff;
+	border: var(--wb-line);
+}
+.waybill > * { flex-shrink: 0; overflow: hidden; border-bottom: var(--wb-line); }
+.waybill > *:last-child { border-bottom: 0; }
+
+/* ── 1. Header: logo | return address (26 mm) ─────────── */
+/* Narrow logo column so the return address gets the width and stays legible. */
+.wb-header {
+	display: grid;
+	grid-template-columns: 20mm 1fr;
+	height: 26mm;
+}
+.wb-logo-col {
+	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 1.5mm;
+	padding: 2mm;
+	border-right: var(--wb-line);
+	overflow: hidden;
 }
 .wb-logo-col img {
-	max-width: 22mm;
-	max-height: 14mm;
-	width: auto;
-	height: auto;
-	object-fit: contain;
 	display: block;
+	max-width: 16mm;
+	max-height: 20mm;
+	object-fit: contain;
 }
 .wb-logo-text {
-	font-size: 10px;
+	font-size: 9px;
 	font-weight: 900;
-	color: #111;
-	text-align: center;
 	line-height: 1.2;
+	text-align: center;
+	-webkit-line-clamp: 4;
 }
 .wb-sender-col {
-	padding: 2.5mm 3mm 2mm;
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	padding: 1.8mm 2.5mm;
+	overflow: hidden;
 }
 .wb-acct-name {
 	font-size: 11px;
 	font-weight: 800;
-	color: #111;
-	line-height: 1.3;
-	margin-bottom: 1.5mm;
+	line-height: 1.25;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 .wb-addr-labels {
-	font-size: 8.5px;
+	margin: 0.5mm 0 0.3mm;
+	font-size: 7px;
 	font-weight: 700;
-	color: #333;
-	margin-bottom: 1mm;
+	text-transform: uppercase;
+	letter-spacing: .4px;
+	color: #444;
 }
-.wb-addr-labels em {
-	font-style: normal;
-	color: #888;
-	font-weight: 400;
-}
+.wb-addr-labels em { font-style: normal; font-weight: 400; color: #777; }
 .wb-addr-body {
-	font-size: 11px;
-	line-height: 1.6;
-	color: #111;
-}
-.wb-phone-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-top: 1.5mm;
+	font-size: 10px;
+	line-height: 1.3;
+	color: #000;
+	-webkit-line-clamp: 3;
 }
 .wb-phone {
-	font-size: 11.5px;
+	margin-top: auto;
+	font-size: 10.5px;
 	font-weight: 700;
-	color: #000;
-	display: flex;
-	align-items: center;
-	gap: 1mm;
-}
-.wb-phone::before {
-	content: none;
-}
-.wb-city-tag {
-	font-size: 7.5px;
-	font-weight: 800;
-	background: #1a1a1a;
-	color: #fff;
-	padding: 1px 5px;
-	border-radius: 2px;
-	letter-spacing: 0.5px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-/* ── 2. Main barcode ──────────────────────────────────── */
+/* ── 2. Barcode (20 mm) ───────────────────────────────── */
 .wb-barcode {
-	padding: 3mm 3mm 2mm;
-	border-bottom: 1px solid #000;
-	text-align: center;
-	height: 22mm;
-	flex-shrink: 0;
-	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	height: 20mm;
+	padding: 1.5mm 3mm 1.2mm;
 }
-#wb-barcode-canvas {
+/* Drawn at high resolution and stretched to the full label width: bars scale
+   uniformly, so any tracking-number length stays a valid, wide barcode. */
+.wb-barcode-canvas {
 	display: block;
-	margin: 0 auto;
-	max-width: 100%;
+	width: 100%;
+	height: 12.5mm;
+	image-rendering: pixelated;
 }
 .wb-barcode-ref {
 	display: flex;
 	align-items: baseline;
 	justify-content: center;
-	gap: 3mm;
+	gap: 2mm;
+	min-width: 0;
 	margin-top: 1mm;
+	white-space: nowrap;
 }
 .wb-barcode-num {
 	font-family: 'Courier New', Courier, monospace;
-	font-size: 8.5px;
-	font-weight: 700;
-	letter-spacing: 1.5px;
-	color: #111;
-}
-.wb-barcode-hint {
-	font-size: 7px;
-	color: #666;
-}
-
-/* ── 3. TO / recipient ────────────────────────────────── */
-.wb-to {
-	padding: 2.5mm 3mm;
-	border-bottom: 1px solid #000;
-	flex: 1;
-	overflow: hidden;
-}
-.wb-to-header {
 	font-size: 9px;
-	margin-bottom: 1.5mm;
-}
-.wb-to-header strong { font-weight: 800; margin-right: 1mm; }
-.wb-to-header em { font-style: normal; color: #555; }
-.wb-to-name {
-	font-size: 15px;
-	font-weight: 800;
-	line-height: 1.3;
-	color: #000;
-	margin-bottom: 1mm;
-}
-.wb-to-addr {
-	font-size: 12px;
-	line-height: 1.6;
-	color: #222;
-}
-.wb-to-phone {
-	display: flex;
-	align-items: center;
-	gap: 1mm;
-	font-size: 13px;
 	font-weight: 700;
-	color: #000;
-	margin-top: 1.5mm;
-}
-.wb-to-phone::before {
-	content: none;
-}
-
-/* ── 4. Product + Sender Account ──────────────────────── */
-.wb-product-row {
-	display: grid;
-	grid-template-columns: 1fr 22mm;
-	border-bottom: 1px solid #000;
-	height: 20mm;
-	flex-shrink: 0;
-}
-.wb-product-left {
-	display: flex;
-	border-right: 1px solid #000;
-}
-.wb-product-tag {
-	writing-mode: vertical-rl;
-	transform: rotate(180deg);
-	font-size: 6px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 1.5px;
-	color: #888;
-	padding: 2mm 1.5mm;
-	border-right: 1px solid #ddd;
-	flex-shrink: 0;
-	white-space: nowrap;
-	align-self: center;
-}
-.wb-product-names {
-	padding: 2mm 2.5mm;
-	font-size: 8px;
-	line-height: 1.55;
-	color: #222;
-	flex: 1;
-}
-.wb-product-names .wb-product-label {
-	font-size: 7px;
-	font-weight: 700;
-	text-transform: uppercase;
 	letter-spacing: 1px;
-	color: #aaa;
-	display: block;
-	margin-bottom: 1mm;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
-.wb-sender-acct {
+.wb-barcode-hint { flex-shrink: 1; min-width: 0; overflow: hidden; font-size: 6.5px; color: #666; }
+.wb-barcode-empty {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: #1a1a1a;
-	color: #fff;
-	font-size: 8px;
-	font-weight: 800;
+	height: 100%;
+	border: 0.3mm dashed #bbb;
+	font-size: 7px;
+	letter-spacing: 1px;
 	text-transform: uppercase;
-	text-align: center;
-	letter-spacing: 0.5px;
-	line-height: 1.5;
-	padding: 2mm 2mm;
+	color: #999;
 }
 
-/* ── 3b. Payment / amount to collect ──────────────────── */
+/* ── 3. Recipient (fills the remaining ≈52 mm) ────────── */
+.wb-to {
+	flex: 1 1 auto;
+	min-height: 0;
+	padding: 2.2mm 3mm;
+}
+.wb-to-header {
+	display: flex;
+	align-items: baseline;
+	gap: 1mm;
+	margin-bottom: 1.2mm;
+	font-size: 8.5px;
+}
+.wb-to-header strong { font-weight: 800; }
+.wb-to-header em { font-style: normal; color: #555; white-space: nowrap; }
+/* Phone in the header row: it can never be clipped by a long address. */
+.wb-to-phone {
+	margin-left: auto;
+	font-size: 12px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+.wb-to-name {
+	margin-bottom: 1mm;
+	font-size: 14px;
+	font-weight: 800;
+	line-height: 1.2;
+	-webkit-line-clamp: 2;
+}
+/* 9 lines fit the ≈52 mm recipient area even with a two-line name, so a
+   long address keeps its postcode; anything beyond is clipped, never spilled. */
+.wb-to-addr {
+	font-size: 11px;
+	line-height: 1.3;
+	color: #111;
+	-webkit-line-clamp: 9;
+}
+
+/* ── 3b. Payment strip (10 mm) ────────────────────────── */
 .wb-payment {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: 2mm;
-	height: 11mm;
+	height: 10mm;
 	padding: 0 3mm;
-	border-bottom: 1px solid #000;
-	flex-shrink: 0;
 }
 .wb-payment-label {
-	font-size: 8px;
+	font-size: 8.5px;
 	font-weight: 900;
+	letter-spacing: .5px;
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
+	white-space: nowrap;
 }
 .wb-payment-amount {
 	font-size: 16px;
@@ -293,109 +259,124 @@ body {
 	-webkit-print-color-adjust: exact;
 	print-color-adjust: exact;
 }
-.wb-payment--prepaid .wb-payment-amount {
-	font-size: 11px;
-	color: #555;
+.wb-payment--prepaid { justify-content: center; }
+.wb-payment--prepaid .wb-payment-label { font-size: 13px; letter-spacing: 2px; }
+
+/* ── 4. Order ID | carrier (12 mm) ────────────────────── */
+.wb-product-row {
+	display: grid;
+	grid-template-columns: 1fr 26mm;
+	height: 12mm;
+}
+.wb-product-left {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	padding: 0 3mm;
+	border-right: var(--wb-line);
+}
+.wb-product-label {
+	font-size: 6.5px;
+	font-weight: 700;
+	letter-spacing: 1px;
+	text-transform: uppercase;
+	color: #777;
+}
+.wb-order-no {
+	font-size: 13px;
+	font-weight: 800;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.wb-sender-acct {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1mm 2mm;
+	background: #000;
+	color: #fff;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+	overflow: hidden;
+}
+.wb-sender-acct span {
+	font-size: 8px;
+	font-weight: 800;
+	line-height: 1.25;
+	text-align: center;
+	text-transform: uppercase;
+	letter-spacing: .4px;
+	-webkit-line-clamp: 3;
 }
 
-/* ── 5. Pieces / Weight ───────────────────────────────── */
+/* ── 5. Pieces / weight (12 mm) ───────────────────────── */
 .wb-meta-row {
 	display: grid;
-	grid-template-columns: 1fr 22mm;
-	border-bottom: 1px solid #000;
-	height: 18mm;
-	flex-shrink: 0;
+	grid-template-columns: 1fr 26mm;
+	height: 12mm;
 }
 .wb-meta-left {
-	padding: 2.5mm 3mm;
-	border-right: 1px solid #000;
-	font-size: 8px;
-	line-height: 2.1;
-	color: #222;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: .6mm;
+	padding: 0 3mm;
+	border-right: var(--wb-line);
+	font-size: 8.5px;
+	white-space: nowrap;
 }
-.wb-meta-left strong {
-	font-weight: 700;
-	color: #111;
-}
-/* ── 5b. Meta box count display ───────────────────────── */
+.wb-meta-left strong { font-weight: 700; }
 .wb-meta-box {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	gap: 0.5mm;
 }
-.wb-meta-box-count {
-	font-size: 18px;
-	font-weight: 900;
-	color: #111;
-	line-height: 1;
-}
-.wb-meta-box-label {
-	font-size: 6.5px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	color: #888;
-}
+.wb-meta-box-count { font-size: 17px; font-weight: 900; line-height: 1; }
+.wb-meta-box-label { margin-top: .5mm; font-size: 6.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #777; }
 
-/* ── 6. QR strip (inside waybill) ────────────────────── */
+/* ── 6. QR strip (15 mm, optional) ────────────────────── */
 .wb-qr-strip {
 	display: grid;
-	grid-template-columns: 16mm 1fr;
-	height: 18mm;
-	flex-shrink: 0;
-	border-top: 1px solid #000;
+	grid-template-columns: 15mm 1fr;
+	height: 15mm;
 }
 .wb-qr-box {
-	padding: 1.5mm;
-	border-right: 1px solid #ddd;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: #fff;
+	padding: 1.2mm;
+	border-right: var(--wb-line);
 }
-#wb-qr-code canvas,
-#wb-qr-code img {
-	display: block;
-	max-width: 100%;
-	max-height: 100%;
-}
+.wb-qr { width: 12.5mm; height: 12.5mm; overflow: hidden; }
+.wb-qr canvas,
+.wb-qr img { width: 100% !important; height: 100% !important; }
 .wb-qr-text {
-	padding: 2.5mm 3mm;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	gap: 1mm;
+	gap: .6mm;
+	min-width: 0;
+	padding: 0 3mm;
 }
-.wb-qr-label {
-	font-size: 6px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	color: #aaa;
-}
-.wb-qr-url {
-	font-size: 7px;
-	color: #333;
-	word-break: break-all;
-	line-height: 1.4;
-}
+.wb-qr-label { font-size: 6.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #777; }
+.wb-qr-url { font-size: 8px; line-height: 1.3; word-break: break-all; -webkit-line-clamp: 2; }
 
-/* ── Print overrides ──────────────────────────────────── */
+/* ── Print: 4 × 6 in page, label centred inside it ───── */
+@page {
+	size: 4in 6in;
+	margin: 0;
+}
 @media print {
-	body    { background: white; padding: 0; }
+	html, body { width: 4in; background: #fff; }
+	body { display: block; padding: 0; }
 	.print-bar { display: none !important; }
 	.waybill {
-		border: 1.5px solid #000;
-		margin: 0;
-		width: 96mm;
-		height: 146mm;
-		page-break-after: always;
-	}
-	@page {
-		size: 100mm 150mm;
-		margin: 2mm;
+		/* (101.6 − 98) / 2 = 1.8 mm sides, (152.4 − 148) / 2 = 2.2 mm top. */
+		margin: 2.2mm auto 0;
+		break-inside: avoid;
 	}
 }
 </style>
@@ -420,27 +401,23 @@ unset( $addr_fields['first_name'], $addr_fields['last_name'] );
 $ship_addr = WC()->countries->get_formatted_address( $addr_fields );
 $phone = $order->get_billing_phone();
 
-// Payment strip: COD orders show the cash to collect; prepaid local-delivery
-// orders say so explicitly so the rider never collects twice. COD orders sit
-// in Processing (which WC counts as "paid"), so is_paid() can't be used here.
+// Payment strip on every label: COD shows the cash to collect; everything
+// else just says "Prepaid" (no amount, so nobody is tempted to collect it). COD orders sit in Processing (which WC counts as "paid"),
+// so is_paid() can't be used here.
 $is_cod       = 'cod' === $order->get_payment_method();
-$show_payment = $is_cod || 'local_delivery' === IRIXFSL_Tracking::get_fulfillment_type( $order );
 $amount_due   = wc_price(
 	max( 0, (float) $order->get_total() - (float) $order->get_total_refunded() ),
 	[ 'currency' => $order->get_currency() ]
 );
 
-// Build product names list (max 4 items)
-$items       = $order->get_items();
-$item_names  = [];
-foreach ( $items as $item ) {
-	$item_names[] = $item->get_name() . ' × ' . $item->get_quantity();
-}
-$item_count  = $order->get_item_count();
-$product_str = implode( "\n", array_slice( $item_names, 0, 4 ) );
-if ( count( $item_names ) > 4 ) {
-	$product_str .= "\n+ " . ( count( $item_names ) - 4 ) . ' more…';
-}
+$items      = $order->get_items();
+$item_count = $order->get_item_count();
+
+// Carrier box: the saved carrier, else how the order is being fulfilled.
+$carrier_label = $tracking['carrier'] ?: [
+	'pickup'         => __( 'Store pickup', 'irix-fulfillment-sl' ),
+	'local_delivery' => __( 'Local delivery', 'irix-fulfillment-sl' ),
+][ IRIXFSL_Tracking::get_fulfillment_type( $order ) ] ?? __( 'Courier', 'irix-fulfillment-sl' );
 
 // Total order weight from product weights (kg etc. per the store's weight unit).
 $order_weight = 0;
@@ -466,7 +443,7 @@ foreach ( $items as $item ) {
 				<img src="<?php echo esc_url( $logo_url ); ?>"
 				     alt="<?php echo esc_attr( $s['company_name'] ); ?>">
 			<?php else : ?>
-				<div class="wb-logo-text"><?php echo esc_html( $s['company_name'] ); ?></div>
+				<div class="wb-logo-text wb-clamp"><?php echo esc_html( $s['company_name'] ); ?></div>
 			<?php endif; ?>
 		</div>
 		<div class="wb-sender-col">
@@ -474,15 +451,13 @@ foreach ( $items as $item ) {
 				<?php echo esc_html( $s['company_name'] ); ?>
 			</div>
 			<div class="wb-addr-labels">
-				Return Address <em>— Seller Address</em>
+				<?php esc_html_e( 'Return address', 'irix-fulfillment-sl' ); ?>
 			</div>
-			<div class="wb-addr-body">
+			<div class="wb-addr-body wb-clamp">
 				<?php if ( $s['company_address'] ) echo nl2br( esc_html( $s['company_address'] ) ); ?>
 			</div>
 			<?php if ( $s['company_phone'] ) : ?>
-			<div class="wb-phone-row">
 				<div class="wb-phone"><?php echo esc_html( $s['company_phone'] ); ?></div>
-			</div>
 			<?php endif; ?>
 		</div>
 	</div>
@@ -490,18 +465,14 @@ foreach ( $items as $item ) {
 	<!-- 2. Main barcode -->
 	<div class="wb-barcode">
 		<?php if ( $tracking['number'] ) : ?>
-			<canvas id="wb-barcode-canvas"
+			<canvas id="wb-barcode-canvas" class="wb-barcode-canvas"
 			        aria-label="<?php echo esc_attr( $tracking['number'] ); ?>"></canvas>
 			<div class="wb-barcode-ref">
 				<span class="wb-barcode-num"><?php echo esc_html( $tracking['number'] ); ?></span>
 				<span class="wb-barcode-hint"><?php esc_html_e( '(Waybill / Tracking No.)', 'irix-fulfillment-sl' ); ?></span>
 			</div>
 		<?php else : ?>
-			<div style="height:14mm;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;">
-				<span style="font-size:7.5px;color:#aaa;letter-spacing:1px;text-transform:uppercase;">
-					<?php esc_html_e( 'Tracking number to be assigned', 'irix-fulfillment-sl' ); ?>
-				</span>
-			</div>
+			<div class="wb-barcode-empty"><?php esc_html_e( 'Tracking number to be assigned', 'irix-fulfillment-sl' ); ?></div>
 		<?php endif; ?>
 	</div>
 
@@ -510,43 +481,36 @@ foreach ( $items as $item ) {
 		<div class="wb-to-header">
 			<strong><?php esc_html_e( 'TO', 'irix-fulfillment-sl' ); ?></strong>
 			<em><?php esc_html_e( '— Delivery Address', 'irix-fulfillment-sl' ); ?></em>
+			<?php if ( $phone ) : ?>
+				<span class="wb-to-phone"><?php echo esc_html( $phone ); ?></span>
+			<?php endif; ?>
 		</div>
-		<div class="wb-to-name"><?php echo esc_html( $ship_name ); ?></div>
+		<div class="wb-to-name wb-clamp"><?php echo esc_html( $ship_name ); ?></div>
 		<?php if ( $ship_addr ) : ?>
-			<div class="wb-to-addr"><?php echo wp_kses_post( $ship_addr ); ?></div>
-		<?php endif; ?>
-		<?php if ( $phone ) : ?>
-			<div class="wb-to-phone"><?php echo esc_html( $phone ); ?></div>
+			<div class="wb-to-addr wb-clamp"><?php echo wp_kses_post( $ship_addr ); ?></div>
 		<?php endif; ?>
 	</div>
 
-	<?php if ( $show_payment ) : ?>
 	<!-- 3b. Payment / amount to collect -->
 	<div class="wb-payment <?php echo $is_cod ? 'wb-payment--cod' : 'wb-payment--prepaid'; ?>">
 		<div class="wb-payment-label">
 			<?php $is_cod
 				? esc_html_e( 'Cash on Delivery — Collect', 'irix-fulfillment-sl' )
-				: esc_html_e( 'Prepaid — Do Not Collect', 'irix-fulfillment-sl' ); ?>
+				: esc_html_e( 'Prepaid', 'irix-fulfillment-sl' ); ?>
 		</div>
-		<div class="wb-payment-amount"><?php echo wp_kses_post( $amount_due ); ?></div>
+		<?php if ( $is_cod ) : ?>
+			<div class="wb-payment-amount"><?php echo wp_kses_post( $amount_due ); ?></div>
+		<?php endif; ?>
 	</div>
-	<?php endif; ?>
 
 	<!-- 4. Product names | Sender Account -->
 	<div class="wb-product-row">
 		<div class="wb-product-left">
-			<div class="wb-product-tag"><?php esc_html_e( 'Order', 'irix-fulfillment-sl' ); ?></div>
-			<div class="wb-product-names">
-				<span class="wb-product-label"><?php esc_html_e( 'Order ID', 'irix-fulfillment-sl' ); ?></span>
-				#<?php echo esc_html( $order->get_order_number() ); ?>
-			</div>
+			<span class="wb-product-label"><?php esc_html_e( 'Order ID', 'irix-fulfillment-sl' ); ?></span>
+			<span class="wb-order-no">#<?php echo esc_html( $order->get_order_number() ); ?></span>
 		</div>
 		<div class="wb-sender-acct">
-			<?php if ( $tracking['carrier'] ) : ?>
-				<?php echo esc_html( $tracking['carrier'] ); ?>
-			<?php else : ?>
-				<?php esc_html_e( 'Sender Account', 'irix-fulfillment-sl' ); ?>
-			<?php endif; ?>
+			<span class="wb-clamp"><?php echo esc_html( $carrier_label ); ?></span>
 		</div>
 	</div>
 
@@ -570,11 +534,11 @@ foreach ( $items as $item ) {
 	<!-- 6. QR strip -->
 	<div class="wb-qr-strip">
 		<div class="wb-qr-box">
-			<div id="wb-qr-code"></div>
+			<div id="wb-qr-code" class="wb-qr"></div>
 		</div>
 		<div class="wb-qr-text">
 			<div class="wb-qr-label"><?php esc_html_e( 'Scan to visit', 'irix-fulfillment-sl' ); ?></div>
-			<div class="wb-qr-url"><?php echo esc_html( $scan_url ); ?></div>
+			<div class="wb-qr-url wb-clamp"><?php echo esc_html( $scan_url ); ?></div>
 		</div>
 	</div>
 	<?php endif; ?>
@@ -595,10 +559,12 @@ foreach ( $items as $item ) {
 		// Main tracking barcode
 		var mainCanvas = document.getElementById('wb-barcode-canvas');
 		if ( mainCanvas && trackingNum ) {
+			// High-res bitmap, CSS stretches it to the label width; quiet
+			// zone = 10 modules either side, as Code 128 requires.
 			IRIXFSLBarcode.draw( mainCanvas, trackingNum, {
-				moduleWidth : 1.5,
-				height      : 48,
-				quiet       : 8
+				moduleWidth : 3,
+				height      : 60,
+				quiet       : 30
 			} );
 		}
 

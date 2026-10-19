@@ -106,7 +106,7 @@ Enter a URL in **Settings → Waybill Scan URL**. A QR code for that URL is prin
 * Fix: tracking email no longer reuses "out for delivery" wording for standard orders sent in the same request.
 * Fix: invoice totals now list fees (incl. Local Delivery Fee), discounts and refunds and always add up.
 * Fix: Local Delivery Fee only added while an order is still open (pending / on hold / processing / ready to ship).
-* New: waybill shows "Cash on Delivery — Collect" amount for COD orders and "Prepaid — Do Not Collect" for prepaid local delivery.
+* New: every waybill shows a payment strip — "Cash on Delivery — Collect" with the amount for COD orders, "Prepaid" for all other payment methods.
 * New: tracking email and WhatsApp send in the background via Action Scheduler (manual resend stays instant).
 * New: Returned orders restock items and are excluded from WooCommerce Analytics revenue.
 * Change: WhatsApp Cloud API updated to Graph v25.0 (filter: irixfsl_whatsapp_api_version).
