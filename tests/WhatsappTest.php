@@ -57,6 +57,22 @@ final class WhatsappTest extends TestCase {
 		$this->assertSame( '94771234567', IRIXFSL_Whatsapp::to_whatsapp_number( '077-123-4567', '94' ) );
 	}
 
+	public function test_to_whatsapp_number_handles_00_prefix_and_plus_with_trunk_zero(): void {
+		$this->assertSame( '94771234567', IRIXFSL_Whatsapp::to_whatsapp_number( '0094771234567', '94' ) );
+		$this->assertSame( '94771234567', IRIXFSL_Whatsapp::to_whatsapp_number( '+94 (0) 77 123 4567', '94' ) );
+	}
+
+	public function test_send_is_blocked_while_another_send_holds_the_lock(): void {
+		global $_irixfsl_test_options, $_irixfsl_test_http_requests;
+		$this->configureWhatsapp();
+		$_irixfsl_test_options['irixfsl_wa_lock_77'] = time();
+		$order = new WC_Order( 77 );
+		$order->set_billing_phone( '0771234567' );
+
+		$this->assertFalse( $this->instance()->send_shipped_message( $order ) );
+		$this->assertSame( [], $_irixfsl_test_http_requests );
+	}
+
 	public function test_to_whatsapp_number_returns_null_for_blank_input(): void {
 		$this->assertNull( IRIXFSL_Whatsapp::to_whatsapp_number( '', '94' ) );
 		$this->assertNull( IRIXFSL_Whatsapp::to_whatsapp_number( '   ', '94' ) );

@@ -24,6 +24,9 @@ final class IRIXFSL_Tracking {
 		// before WC_Meta_Box_Order_Data::save (40) applies the status change, so
 		// the tracking number is in place when the Shipped guard checks for it.
 		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'save_meta' ] );
+		// Priority 60: after WC_Meta_Box_Order_Data::save (40) has persisted the
+		// order, so our re-price + save can't be overwritten by the form save.
+		add_action( 'woocommerce_process_shop_order_meta', [ $this, 'apply_fee_after_order_save' ], 60 );
 
 		// Priority 20: after the Shipped guard (10) may have reverted the order.
 		// The email itself goes out in the background via Action Scheduler.
@@ -179,16 +182,31 @@ final class IRIXFSL_Tracking {
 		<?php
 	}
 
+	/** Nonce + capability gate shared by the order-screen save hooks. */
+	private function is_authorized_save(): bool {
+		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return false;
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return false;
+		return current_user_can( 'edit_shop_orders' );
+	}
+
 	public function save_meta( $post_id_or_order ): void {
 		if ( self::$tracking_saved ) return;
-		if ( ! isset( $_POST['irixfsl_tracking_nonce'] ) ) return;
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['irixfsl_tracking_nonce'] ) ), 'irixfsl_tracking_save' ) ) return;
+		if ( ! $this->is_authorized_save() ) return;
 
 		$order = IRIXFSL_Helpers::resolve_order( $post_id_or_order );
 		if ( ! $order ) return;
 
 		self::$tracking_saved = true;
 		$this->persist_tracking( $order );
+	}
+
+	/** Runs after WooCommerce has saved the order form — see boot(). */
+	public function apply_fee_after_order_save( $post_id_or_order ): void {
+		if ( ! $this->is_authorized_save() ) return;
+
+		// Classic screen passes an ID (fresh load, post-save); HPOS passes the object WC just saved.
+		$order = IRIXFSL_Helpers::resolve_order( $post_id_or_order );
+		if ( $order ) $this->maybe_apply_local_delivery_fee( $order );
 	}
 
 	private function persist_tracking( WC_Order $order ): void {
@@ -229,8 +247,6 @@ final class IRIXFSL_Tracking {
 				[ 'source' => 'irix-fulfillment-sl' ]
 			);
 		}
-
-		$this->maybe_apply_local_delivery_fee( $order );
 	}
 
 	/**
@@ -239,10 +255,9 @@ final class IRIXFSL_Tracking {
 	 * Delivery Fee" line item and recalculates totals — once only, ever, per
 	 * order, tracked via order meta so re-saving the order never duplicates it.
 	 *
-	 * Runs on every admin save of a local-delivery order (see persist_tracking()
-	 * callers); the META_LOCAL_DELIVERY_FEE_APPLIED flag is set *before* the
-	 * order is re-saved below, so the resulting recursive
-	 * save never re-applies it.
+	 * Runs after every admin save of a local-delivery order (see
+	 * apply_fee_after_order_save()). The flag is persisted together with the fee
+	 * item, and cleared again if that save fails so the fee isn't lost for good.
 	 */
 	private function maybe_apply_local_delivery_fee( WC_Order $order ): void {
 		if ( $order->get_meta( self::META_LOCAL_DELIVERY_FEE_APPLIED ) ) return;
@@ -267,6 +282,7 @@ final class IRIXFSL_Tracking {
 			$order->calculate_totals();
 			$order->save();
 		} catch ( \Exception $e ) {
+			$order->delete_meta_data( self::META_LOCAL_DELIVERY_FEE_APPLIED );
 			wc_get_logger()->error(
 				sprintf( 'Failed to apply local delivery fee for order #%d: %s', $order->get_id(), $e->getMessage() ),
 				[ 'source' => 'irix-fulfillment-sl' ]

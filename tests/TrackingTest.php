@@ -18,6 +18,7 @@ final class TrackingTest extends TestCase {
 		$_irixfsl_test_options = [];
 		$_irixfsl_test_logger  = null;
 		$_POST                 = [];
+		$GLOBALS['_irixfsl_test_user_caps'] = [ 'edit_shop_orders' => true, 'manage_woocommerce' => true ];
 		$this->resetTrackingSavedFlag();
 	}
 
@@ -236,7 +237,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->save_meta( $order );
+		IRIXFSL_Tracking::instance()->apply_fee_after_order_save( $order );
 
 		$items = $order->get_items();
 		$this->assertCount( 1, $items );
@@ -262,7 +263,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->save_meta( $order );
+		IRIXFSL_Tracking::instance()->apply_fee_after_order_save( $order );
 
 		$this->assertSame( [], $order->get_items() );
 	}
@@ -281,7 +282,7 @@ final class TrackingTest extends TestCase {
 		$order->update_meta_data( IRIXFSL_Tracking::META_LOCAL_DELIVERY_FEE_APPLIED, '1' );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->save_meta( $order );
+		IRIXFSL_Tracking::instance()->apply_fee_after_order_save( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -300,7 +301,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'my_delivery' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->save_meta( $order );
+		IRIXFSL_Tracking::instance()->apply_fee_after_order_save( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -319,7 +320,7 @@ final class TrackingTest extends TestCase {
 		$order->set_shipping_methods( [ new WC_Order_Item_Shipping( 'flat_rate' ) ] );
 		$this->withTrackingNonce();
 
-		IRIXFSL_Tracking::instance()->save_meta( $order );
+		IRIXFSL_Tracking::instance()->apply_fee_after_order_save( $order );
 
 		$this->assertSame( [], $order->get_items() );
 		$this->assertSame( 0, $order->get_save_call_count() );
@@ -503,6 +504,17 @@ final class TrackingTest extends TestCase {
 		IRIXFSL_Tracking::instance()->save_meta( $order );
 
 		$this->assertSame( 'FedEx', $order->get_meta( IRIXFSL_Tracking::META_CARRIER ) );
+	}
+
+	public function test_save_meta_ignored_without_edit_capability(): void {
+		$GLOBALS['_irixfsl_test_user_caps'] = [];
+		$order = new WC_Order( 800 );
+		$this->withTrackingNonce();
+		$_POST['irixfsl_tracking_number'] = 'ABC123';
+
+		IRIXFSL_Tracking::instance()->save_meta( $order );
+
+		$this->assertSame( '', $order->get_meta( IRIXFSL_Tracking::META_NUMBER ) );
 	}
 
 	// ── on_status_changed() → background email ──────────────────────────

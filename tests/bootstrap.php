@@ -269,6 +269,15 @@ if ( ! function_exists( 'update_option' ) ) {
     }
 }
 
+if ( ! function_exists( 'add_option' ) ) {
+    function add_option( string $option, $value = '', $deprecated = '', $autoload = null ): bool {
+        global $_irixfsl_test_options;
+        if ( array_key_exists( $option, $_irixfsl_test_options ) ) return false;
+        $_irixfsl_test_options[ $option ] = $value;
+        return true;
+    }
+}
+
 if ( ! function_exists( 'delete_option' ) ) {
     function delete_option( string $option ): bool {
         global $_irixfsl_test_options;
@@ -626,6 +635,8 @@ if ( ! class_exists( 'WC_Order' ) ) {
         public function update_meta_data( string $key, $value ): void {
             $this->meta[ $key ] = $value;
         }
+
+        public function delete_meta_data( string $key ): void { unset( $this->meta[ $key ] ); }
 
         public function save_meta_data(): void {}
 

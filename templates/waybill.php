@@ -385,9 +385,9 @@ body {
 
 <?php
 $s         = IRIXFSL_Settings::get();
-$ship_name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name() );
+$ship_name = trim( $order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name(), " \n\r\t\v\0" );
 if ( ! $ship_name ) {
-	$ship_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
+	$ship_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(), " \n\r\t\v\0" );
 }
 
 // Build address without name fields to avoid the name appearing twice.

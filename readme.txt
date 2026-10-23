@@ -3,7 +3,7 @@ Contributors: irix
 Tags: woocommerce, fulfillment, shipping, tracking, invoice, packing slip, waybill, sri lanka
 Requires at least: 6.5
 Tested up to: 7.1
-Requires PHP: 8.0
+Requires PHP: 8.4
 WC requires at least: 8.0
 WC tested up to: 10.9
 Stable tag: 1.2.0

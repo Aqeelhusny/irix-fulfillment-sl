@@ -23,7 +23,7 @@ trait IRIXFSL_Singleton {
 
 	private function __clone() {}
 
-	public function __wakeup(): void {
+	public function __unserialize( array $data ): void {
 		throw new \RuntimeException( 'Cannot unserialize a singleton.' );
 	}
 

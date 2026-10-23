@@ -348,8 +348,8 @@ final class IRIXFSL_Settings {
 					<tr>
 						<th><?php esc_html_e( 'Access Token', 'irix-fulfillment-sl' ); ?></th>
 						<td>
-							<input type="password" name="irixfsl[whatsapp_access_token]" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo $s['whatsapp_access_token'] !== '' ? esc_attr__( '•••••••• (leave blank to keep current token)', 'irix-fulfillment-sl' ) : ''; ?>">
-							<p class="description"><?php esc_html_e( 'A permanent System User access token with whatsapp_business_messaging permission. Never displayed once saved — leave blank to keep the existing token.', 'irix-fulfillment-sl' ); ?></p>
+							<input type="password" name="irixfsl[whatsapp_access_token]" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo IRIXFSL_Whatsapp::access_token() !== '' ? esc_attr__( '•••••••• (leave blank to keep current token)', 'irix-fulfillment-sl' ) : ''; ?>">
+							<p class="description"><?php esc_html_e( 'A permanent System User access token with whatsapp_business_messaging permission. Never displayed once saved — leave blank to keep the existing token. To keep it out of the database, define IRIXFSL_WHATSAPP_TOKEN in wp-config.php.', 'irix-fulfillment-sl' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -456,7 +456,7 @@ final class IRIXFSL_Settings {
 	public static function sanitize_local_delivery_methods( array $raw_rows ): array {
 		$seen = [];
 		foreach ( $raw_rows as $row ) {
-			$method_id = sanitize_text_field( trim( (string) ( $row['method_id'] ?? '' ) ) );
+			$method_id = sanitize_text_field( trim( (string) ( $row['method_id'] ?? '' ), " \n\r\t\v\0" ) );
 			if ( $method_id === '' ) continue;
 
 			$seen[ $method_id ] = [
@@ -469,7 +469,7 @@ final class IRIXFSL_Settings {
 	}
 
 	private static function sanitize_optional_number( $value ): string {
-		$value = trim( sanitize_text_field( (string) $value ) );
+		$value = trim( sanitize_text_field( (string) $value ), " \n\r\t\v\0" );
 		if ( $value === '' || ! is_numeric( $value ) ) return '';
 		return (string) max( 0, (float) $value );
 	}

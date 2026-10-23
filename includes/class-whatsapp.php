@@ -16,6 +16,17 @@ final class IRIXFSL_Whatsapp {
 	/** Meta Graph API version — each is supported ~2 years; v25.0 until July 2028. */
 	const API_VERSION = 'v25.0';
 
+	/**
+	 * The access token: a wp-config.php constant wins over the stored setting, so
+	 * it can be kept out of the database entirely.
+	 */
+	public static function access_token(): string {
+		if ( defined( 'IRIXFSL_WHATSAPP_TOKEN' ) && is_string( IRIXFSL_WHATSAPP_TOKEN ) && IRIXFSL_WHATSAPP_TOKEN !== '' ) {
+			return IRIXFSL_WHATSAPP_TOKEN;
+		}
+		return (string) IRIXFSL_Settings::get( 'whatsapp_access_token' );
+	}
+
 	protected function boot(): void {
 		add_action( 'add_meta_boxes',                   [ $this, 'add_meta_box' ] );
 		add_action( 'admin_enqueue_scripts',            [ $this, 'enqueue_assets' ] );
@@ -63,7 +74,7 @@ final class IRIXFSL_Whatsapp {
 		$settings   = IRIXFSL_Settings::get();
 		$configured = ! empty( $settings['whatsapp_enabled'] )
 			&& $settings['whatsapp_phone_number_id'] !== ''
-			&& $settings['whatsapp_access_token'] !== ''
+			&& self::access_token() !== ''
 			&& $settings['whatsapp_template_name'] !== '';
 
 		if ( ! $configured ) {
@@ -130,9 +141,26 @@ final class IRIXFSL_Whatsapp {
 	 * this returns true.
 	 */
 	public function send_shipped_message( WC_Order $order ): bool {
+		// add_option() is atomic (unique option_name), so a manual resend and the
+		// queued job can't both pass this point for the same order.
+		$lock = 'irixfsl_wa_lock_' . $order->get_id();
+		if ( ! add_option( $lock, time(), '', false ) ) {
+			// A crashed request would otherwise leave the order locked for good.
+			if ( time() - (int) get_option( $lock ) < 120 ) return false;
+			delete_option( $lock );
+			if ( ! add_option( $lock, time(), '', false ) ) return false;
+		}
+		try {
+			return $this->do_send_shipped_message( $order );
+		} finally {
+			delete_option( $lock );
+		}
+	}
+
+	private function do_send_shipped_message( WC_Order $order ): bool {
 		$settings         = IRIXFSL_Settings::get();
 		$phone_number_id  = $settings['whatsapp_phone_number_id'] ?? '';
-		$access_token     = $settings['whatsapp_access_token'] ?? '';
+		$access_token     = self::access_token();
 		$template_name    = $settings['whatsapp_template_name'] ?? '';
 		$template_lang    = $settings['whatsapp_template_language'] ?: 'en_US';
 		$calling_code     = $settings['whatsapp_default_calling_code'] ?: '94';
@@ -207,7 +235,8 @@ final class IRIXFSL_Whatsapp {
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( $code < 200 || $code >= 300 ) {
 			wc_get_logger()->error(
-				sprintf( 'WhatsApp API returned HTTP %d for order #%d: %s', $code, $order->get_id(), wp_remote_retrieve_body( $response ) ),
+				// Body is truncated: Meta error payloads can echo recipient numbers.
+				sprintf( 'WhatsApp API returned HTTP %d for order #%d: %s', $code, $order->get_id(), substr( wp_remote_retrieve_body( $response ), 0, 300 ) ),
 				[ 'source' => 'irix-fulfillment-sl' ]
 			);
 			return false;
@@ -248,13 +277,21 @@ final class IRIXFSL_Whatsapp {
 	 * Returns null if no digits remain.
 	 */
 	public static function to_whatsapp_number( string $raw, string $default_calling_code ): ?string {
-		$trimmed = trim( $raw );
+		$trimmed = trim( $raw, " \n\r\t\v\0" );
 		if ( $trimmed === '' ) return null;
 
 		$digits = preg_replace( '/\D+/', '', $trimmed );
 		if ( $digits === '' || $digits === null ) return null;
 
-		if ( $trimmed[0] === '0' ) {
+		if ( $trimmed[0] === '+' ) {
+			// "+94 (0) 77…" — drop the optional trunk 0 written after the code.
+			if ( str_starts_with( $digits, $default_calling_code . '0' ) ) {
+				$digits = $default_calling_code . substr( $digits, strlen( $default_calling_code ) + 1 );
+			}
+		} elseif ( str_starts_with( $digits, '00' ) ) {
+			// International dialling prefix: "0094771234567".
+			$digits = substr( $digits, 2 );
+		} elseif ( $digits[0] === '0' ) {
 			$digits = $default_calling_code . substr( $digits, 1 );
 		}
 

@@ -9,7 +9,7 @@
  * License:     GPLv2 or later
  * Requires at least: 6.5
  * Tested up to:      7.1
- * Requires PHP:      8.0
+ * Requires PHP:      8.4
  * Requires Plugins:  woocommerce
  * WC requires at least: 8.0
  * WC tested up to:      10.9
@@ -45,9 +45,10 @@ final class WC_Fulfillment_SL {
 		}
 
 		// WP 6.7+ warns when translations load before init.
+		// Priority 0: WC builds its email classes (which call __()) early on init.
 		add_action( 'init', static function () {
 			load_plugin_textdomain( 'irix-fulfillment-sl', false, dirname( plugin_basename( IRIXFSL_PLUGIN_FILE ) ) . '/languages' );
-		} );
+		}, 0 );
 
 		require_once IRIXFSL_DIR . 'includes/class-helpers.php';
 		require_once IRIXFSL_DIR . 'includes/class-settings.php';
@@ -101,11 +102,4 @@ function irixfsl_activate(): void {
 	require_once IRIXFSL_DIR . 'includes/class-customer-portal.php';
 	add_rewrite_endpoint( IRIXFSL_Customer_Portal::ENDPOINT_TRACK, EP_PAGES );
 	flush_rewrite_rules();
-}
-
-register_uninstall_hook( __FILE__, 'irixfsl_uninstall' );
-function irixfsl_uninstall(): void {
-	delete_option( 'irixfsl_settings' );
-	delete_option( 'irixfsl_carrier_urls_migrated' );
-	delete_option( 'irixfsl_local_delivery_methods_migrated' );
 }
